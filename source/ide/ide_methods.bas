@@ -1255,7 +1255,7 @@ FUNCTION ide2 (ignore)
             _FINISHDROP
         END IF
 
-        'Hover/click (QuickNav, "Find" field)
+        'Hover/click (QuickNav, "Find" field, code folding)
         IF QuickNavTotal > 0 THEN
             DO UNTIL QuickNavHistory(QuickNavTotal) <= iden
                 'make sure that the line number in history still exists
@@ -1306,6 +1306,34 @@ FUNCTION ide2 (ignore)
                     PCOPY 3, 0
                 END IF
             END IF
+        END IF
+
+        IF ShowLineNumbers THEN 'code collapsing
+            FOR i = 3 TO idewy - 6
+                l = i - 3 + idesy
+                IF l > iden THEN EXIT FOR
+                IF l <= UBOUND(BlockStruct) THEN
+                    COLOR 7
+                    IF ShowLineNumbersUseBG THEN COLOR , 6 ELSE COLOR , 1
+                    IF ShowLineNumbersSeparator THEN LOCATE i, 1 + maxLineNumberLength: PRINT CHR$(179);
+                    IF BlockStruct(l).ClosingLine > 0 AND BlockStruct(l).ClosingLine <> l THEN
+                        LOCATE i, 1 + maxLineNumberLength
+                        COLOR 10
+                        IF mX = 1 + maxLineNumberLength AND mY = i THEN
+                            COLOR 0, 7
+                            IF mCLICK THEN
+                                BlockStruct(l).Collapsed = NOT BlockStruct(l).Collapsed
+                            END IF
+                        END IF
+                        IF BlockStruct(l).Collapsed THEN
+                            PRINT CHR$(16);
+                        ELSE
+                            PRINT CHR$(31);
+                        END IF
+                    END IF
+                END IF
+            NEXT
+            PCOPY 3, 0
         END IF
 
         IF mY = idewy - 4 AND mX > idewx - (idesystem2.w + 10) AND mX < idewx - 1 THEN 'inside text box
@@ -1440,6 +1468,7 @@ FUNCTION ide2 (ignore)
                             idecx = 1
                             AddQuickNavHistory idecy
                             idecy = idefocusline
+                            Unfold idecy
                             ideselect = 0
                             GOTO specialchar
                         CASE 3
@@ -2698,6 +2727,7 @@ FUNCTION ide2 (ignore)
             LOOP
             AddQuickNavHistory idecy
             idecy = l
+            Unfold idecy
             idecx = IdeBmk(b).x
             ideselect = 0
             GOTO specialchar
@@ -2862,7 +2892,7 @@ FUNCTION ide2 (ignore)
                     idemouseselect = 1
                     wholeword.select = 0
                 END IF
-            ELSEIF mX > 1 AND mX <= 1 + maxLineNumberLength AND mY > 2 AND mY < (idewy - 5) AND ShowLineNumbers THEN
+            ELSEIF mX > 1 AND mX < 1 + maxLineNumberLength AND mY > 2 AND mY < (idewy - 5) AND ShowLineNumbers THEN
                 'line numbers are visible and been clicked
                 ideselect = 1
                 idecy = mY - 2 + idesy - 1
@@ -5997,6 +6027,18 @@ FUNCTION ide2 (ignore)
 
 END FUNCTION
 
+SUB Unfold (whichLine AS LONG)
+    IF whichLine < UBOUND(BlockStruct) THEN EXIT SUB
+    FOR l = whichLine TO 1 STEP -1
+        IF BlockStruct(l).ClosingLine > 0 THEN
+            IF BlockStruct(l).ClosingLine > whichLine THEN
+                BlockStruct(l).Collapsed = 0
+            END IF
+            EXIT FOR
+        END IF
+    NEXT
+END SUB
+
 SUB idebox (x, y, w, h)
     LOCATE y, x: PRINT CHR$(218) + STRING$(w - 2, 196) + CHR$(191);
     FOR y2 = y + 1 TO y + h - 2
@@ -8820,6 +8862,7 @@ SUB ideshowtext
             IF l <= iden THEN
                 DO UNTIL l < UBOUND(InValidLine) 'make certain we have enough InValidLine elements to cover us in case someone scrolls QB64
                     REDIM _PRESERVE InValidLine(UBOUND(InValidLine) + 1000) AS _BYTE '   to the end of a program before the IDE has finished
+                    REDIM _PRESERVE BlockStruct(UBOUND(BlockStruct) + 1000) AS BlockStructType
                 LOOP '                                                      verifying the code and growing the array during the IDE passes.
 
                 a$ = idegetline(l)
@@ -9248,6 +9291,17 @@ SUB ideshowtext
         END IF
     END IF
     IF ShowLineNumbersSeparator THEN LOCATE y + 3, 1 + maxLineNumberLength: PRINT CHR$(179);
+    IF l <= UBOUND(BlockStruct) THEN
+        IF BlockStruct(l).ClosingLine > 0 AND BlockStruct(l).ClosingLine <> l THEN
+            LOCATE y + 3, 1 + maxLineNumberLength
+            COLOR 10
+            IF BlockStruct(l).Collapsed THEN
+                PRINT CHR$(16);
+            ELSE
+                PRINT CHR$(31);
+            END IF
+        END IF
+    END IF
     COLOR , 1
     RETURN
 

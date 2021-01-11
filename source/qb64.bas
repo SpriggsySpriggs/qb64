@@ -862,6 +862,11 @@ DIM controlvalue(1000) AS LONG
 DIM controlstate(1000) AS INTEGER
 DIM controlref(1000) AS LONG 'the line number the control was created on
 
+TYPE BlockStructType
+    ClosingLine AS LONG
+    Collapsed AS _BYTE
+END TYPE
+REDIM SHARED BlockStruct(10000) AS BlockStructType
 
 
 
@@ -1584,8 +1589,11 @@ DO
 
     DO UNTIL linenumber < UBOUND(InValidLine) 'color information flag for each line
         REDIM _PRESERVE InValidLine(UBOUND(InValidLine) + 1000) AS _BYTE
+        REDIM _PRESERVE BlockStruct(UBOUND(BlockStruct) + 1000) AS BlockStructType
     LOOP
     InValidLine(linenumber) = 0
+    BlockStruct(linenumber).ClosingLine = 0
+    BlockStruct(linenumber).Collapsed = 0
 
     ColorPass:
 
@@ -1691,6 +1699,7 @@ DO
         IF ExecLevel(ExecCounter) THEN
             DO UNTIL linenumber < UBOUND(InValidLine)
                 REDIM _PRESERVE InValidLine(UBOUND(InValidLine) + 1000) AS _BYTE
+                REDIM _PRESERVE BlockStruct(UBOUND(BlockStruct) + 1000) AS BlockStructType
             LOOP
 
             InValidLine(linenumber) = -1
@@ -2807,6 +2816,7 @@ DO
             DefineElse(ExecCounter) = 0 'We no longer have an $IF block at this level
             ExecCounter = ExecCounter - 1
             layout$ = "$END IF"
+            BlockStruct(controlref(controllevel)).ClosingLine = linenumber
             controltype(controllevel) = 0
             controllevel = controllevel - 1
             GOTO finishednonexec
@@ -4512,6 +4522,7 @@ DO
 
             IF ideindentsubs THEN
                 controllevel = controllevel + 1
+                controlref(controllevel) = linenumber
                 controltype(controllevel) = 32
             END IF
 
@@ -5002,6 +5013,7 @@ DO
                 END IF
 
                 IF controltype(controllevel) = 32 AND ideindentsubs THEN
+                    BlockStruct(controlref(controllevel)).ClosingLine = linenumber
                     controltype(controllevel) = 0
                     controllevel = controllevel - 1
                 END IF
@@ -5240,6 +5252,7 @@ DO
                     PRINT #12, "fornext_continue_" + str2$(controlid(controllevel)) + ":;"
                     PRINT #12, "}"
                     PRINT #12, "fornext_exit_" + str2$(controlid(controllevel)) + ":;"
+                    BlockStruct(controlref(controllevel)).ClosingLine = linenumber
                     controllevel = controllevel - 1
                     IF n = 1 THEN EXIT FOR
                     v$ = ""
@@ -5301,6 +5314,7 @@ DO
             PRINT #12, "ww_continue_" + str2$(controlid(controllevel)) + ":;"
             PRINT #12, "}"
             PRINT #12, "ww_exit_" + str2$(controlid(controllevel)) + ":;"
+            BlockStruct(controlref(controllevel)).ClosingLine = linenumber
             controllevel = controllevel - 1
             l$ = "WEND"
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
@@ -5383,6 +5397,7 @@ DO
                 END IF
             END IF
             PRINT #12, "dl_exit_" + str2$(controlid(controllevel)) + ":;"
+            BlockStruct(controlref(controllevel)).ClosingLine = linenumber
             controllevel = controllevel - 1
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             IF n = 1 THEN GOTO finishednonexec '***no error causing code, event checking done by DO***
@@ -5704,6 +5719,7 @@ DO
         FOR i = 1 TO controlvalue(controllevel)
             PRINT #12, "}"
         NEXT
+        BlockStruct(controlref(controllevel)).ClosingLine = linenumber
         controllevel = controllevel - 1
         GOTO finishednonexec '***no error causing code, event checking done by IF***
     END IF
@@ -5725,6 +5741,7 @@ DO
             FOR i = 1 TO controlvalue(controllevel)
                 PRINT #12, "}"
             NEXT
+            BlockStruct(controlref(controllevel)).ClosingLine = linenumber
             controllevel = controllevel - 1
             GOTO finishednonexec '***no error causing code, event checking done by IF***
         END IF
@@ -5845,11 +5862,13 @@ DO
             IF controltype(controllevel) = 18 THEN
                 everycasenewcase = everycasenewcase + 1
                 PRINT #12, "sc_ec_" + str2$(everycasenewcase) + "_end:;"
+                BlockStruct(controlref(controllevel)).ClosingLine = linenumber
                 controllevel = controllevel - 1
                 IF EveryCaseSet(SelectCaseCounter) = 0 THEN PRINT #12, "goto sc_" + str2$(controlid(controllevel)) + "_end;"
                 PRINT #12, "}"
             END IF
             IF controltype(controllevel) = 19 THEN
+                BlockStruct(controlref(controllevel)).ClosingLine = linenumber
                 controllevel = controllevel - 1
                 IF EveryCaseSet(SelectCaseCounter) THEN PRINT #12, "} /* End of SELECT EVERYCASE ELSE */"
             END IF
@@ -5875,6 +5894,7 @@ DO
                 END IF
             END IF
 
+            BlockStruct(controlref(controllevel)).ClosingLine = linenumber
             controllevel = controllevel - 1
             SelectCaseCounter = SelectCaseCounter - 1
             l$ = "END" + sp + "SELECT"
@@ -5900,6 +5920,7 @@ DO
             IF controltype(controllevel) = 19 THEN a$ = "Expected END SELECT": GOTO errmes
             IF controltype(controllevel) = 18 THEN
                 lhscontrollevel = lhscontrollevel - 1
+                BlockStruct(controlref(controllevel)).ClosingLine = linenumber
                 controllevel = controllevel - 1
                 everycasenewcase = everycasenewcase + 1
                 PRINT #12, "sc_ec_" + str2$(everycasenewcase) + "_end:;"
