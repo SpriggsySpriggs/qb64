@@ -455,6 +455,13 @@ CONST HASHFLAG_ARRAY = 4096
 CONST HASHFLAG_XELEMENTNAME = 8192
 CONST HASHFLAG_XTYPENAME = 16384
 
+TYPE diskBuffers
+    filename AS STRING
+    buffer AS STRING
+    state AS _BYTE
+END TYPE
+DIM SHARED diskBuffer(1 TO 255) AS diskBuffers
+
 TYPE Label_Type
     State AS _UNSIGNED _BYTE '0=label referenced, 1=label created
     cn AS STRING * 256
@@ -25195,6 +25202,28 @@ SUB addWarning (lineNumber AS LONG, text$)
         IF warningListItems > UBOUND(warning$) THEN REDIM _PRESERVE warning$(warningListItems + 999)
         warning$(warningListItems) = MKL$(lineNumber) + text$
     END IF
+END SUB
+
+SUB OpenBuffer (filename$, mode$, handle)
+    'IF diskBuffer(handle).state = -1 THEN ERROR 5
+    diskBuffer(handle).filename = filename$
+    SELECT CASE UCASE$(mode$)
+        CASE "OUTPUT"
+            diskBuffer(handle).buffer = ""
+        CASE "APPEND"
+            FOR i = 1 TO UBOUND(diskBuffer)
+                IF i = handle THEN _CONTINUE
+                IF diskBuffer(i).filename = filename$ THEN
+                    diskBuffer(handle).buffer = diskBuffer(i).buffer
+                    EXIT FOR
+                END IF
+            NEXT
+    END SELECT
+    diskBuffer(handle).state = -1 'open
+END SUB
+
+SUB CloseBuffer (handle)
+    diskBuffer(handle).state = 0
 END SUB
 
 '$INCLUDE:'utilities\strings.bas'
