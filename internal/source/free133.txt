@@ -1,4 +1,5 @@
-if(oldstr4705){
-if(oldstr4705->fixed)qbs_set(oldstr4705,_FUNC_IDEHLEN_STRING_A);
-qbs_free(_FUNC_IDEHLEN_STRING_A);
+if(oldstr4703){
+if(oldstr4703->fixed)qbs_set(oldstr4703,_SUB_IDEHPRINT_STRING_A);
+qbs_free(_SUB_IDEHPRINT_STRING_A);
 }
+qbs_free(_SUB_IDEHPRINT_STRING_C);

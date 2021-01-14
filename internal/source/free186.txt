@@ -1,6 +1,6 @@
-if(oldstr5574){
-if(oldstr5574->fixed)qbs_set(oldstr5574,_SUB_IDEADDRECENT_STRING_F2);
-qbs_free(_SUB_IDEADDRECENT_STRING_F2);
+if(oldstr5515){
+if(oldstr5515->fixed)qbs_set(oldstr5515,_SUB_IDEADDSEARCHED_STRING_S2);
+qbs_free(_SUB_IDEADDSEARCHED_STRING_S2);
 }
-qbs_free(_SUB_IDEADDRECENT_STRING_F);
-qbs_free(_SUB_IDEADDRECENT_STRING_A);
+qbs_free(_SUB_IDEADDSEARCHED_STRING_S);
+qbs_free(_SUB_IDEADDSEARCHED_STRING_A);

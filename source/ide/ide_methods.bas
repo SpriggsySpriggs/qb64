@@ -148,6 +148,7 @@ FUNCTION ide2 (ignore)
         IF ideerror = 3 THEN errorat$ = "File access error": CLOSE #150
         IF ideerror = 4 THEN errorat$ = "Path not found"
         IF ideerror = 5 THEN errorat$ = "Cannot create folder"
+        IF ideerror = 6 THEN errorat$ = "Cannot save file"
         IF ideerror = -1 THEN GOTO errorReportDone 'fail quietly - like ON ERROR RESUME NEXT
 
         qberrorcode = ERR
@@ -160,6 +161,16 @@ FUNCTION ide2 (ignore)
         IF (ideerror > 1) THEN
             'Don't show too much detail if user just tried loading an invalid file
             ideerrormessageTITLE$ = ideerrormessageTITLE$ + " (" + str2$(_ERRORLINE) + "-" + str2$(_INCLERRORLINE) + ")"
+            IF AttemptToLoadRecent = -1 THEN
+                'Offer to cleanup recent file list, removing invalid entries
+                PCOPY 2, 0
+                result = idemessagebox(ideerrormessageTITLE$, errorat$ + "." + CHR$(10) + CHR$(10) + "Remove broken links from recent files?", "#Yes;#No")
+                IF result = 1 THEN
+                    GOSUB CleanUpRecentList
+                END IF
+                PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
+                GOTO errorReportDone
+            END IF
         ELSE
             'a more serious error; let's report something that'll help bug reporting
             inclerrorline = _INCLERRORLINE
@@ -175,16 +186,6 @@ FUNCTION ide2 (ignore)
         PCOPY 3, 0
         result = idemessagebox(ideerrormessageTITLE$, errorat$, "")
         errorReportDone:
-    END IF
-
-    IF (ideerror > 1) AND (AttemptToLoadRecent = -1) THEN
-        'Offer to cleanup recent file list, removing invalid entries
-        PCOPY 2, 0
-        r$ = ideclearhistory$("INVALID")
-        IF r$ = "Y" THEN
-            GOSUB CleanUpRecentList
-        END IF
-        PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
     END IF
 
     ideerror = 1 'unknown IDE error
@@ -963,6 +964,28 @@ FUNCTION ide2 (ignore)
                             NEXT
                             statusarealink = 2
                         END IF
+
+                        IF y < idewy - 1 AND linefragment <> "[INFORMATION UNAVAILABLE]" THEN
+                            temp$ = linefragment
+                            FOR i = 1 TO LEN(temp$)
+                                IF MID$(temp$, i, 1) = sp$ THEN MID$(temp$, i, 1) = " "
+                            NEXT
+                            temp$ = _TRIM$(temp$)
+                            IF LEN(temp$) THEN
+                                y = y + 1: x = 1
+                                temp$ = "Caused by (or after): " + CHR$(1) + temp$
+
+                                COLOR 7, 1
+                                FOR i = 1 TO LEN(temp$)
+                                    x = x + 1: IF x = idewx THEN x = 2: y = y + 1
+                                    IF y > idewy - 1 THEN EXIT FOR
+                                    IF ASC(temp$, i) = 1 THEN i = i + 1: COLOR 11, 1
+                                    LOCATE y, x
+                                    PRINT CHR$(ASC(temp$, i));
+                                NEXT
+                            END IF
+                        END IF
+
                     END IF
                 END IF
             END IF
@@ -1043,7 +1066,7 @@ FUNCTION ide2 (ignore)
                                                       "eventually be flagged as false positives by your" + CHR$(10) + _
                                                       "antivirus/antimalware software." + CHR$(10) + CHR$(10) + _
                                                       "It is advisable to whitelist your whole QB64 folder to avoid" + CHR$(10) + _
-                                                      "operation errors.", "OK;Don't show this again")
+                                                      "operation errors.", "#OK;#Don't show this again")
 
             PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
             IF result = 2 THEN
@@ -1480,15 +1503,22 @@ FUNCTION ide2 (ignore)
                 IF SaveExeWithSource THEN
                     result = idemessagebox("Run", "Your program will be compiled to the same folder where your" + CHR$(10) + _
                                            "source code is saved. You can change that by unchecking the" + CHR$(10) + _
-                                           "option 'Output EXE to Source Folder' in the Run menu.", "OK;Don't show this again")
+                                           "option 'Output EXE to Source Folder' in the Run menu.", "#OK;#Don't show this again;#Cancel")
                 ELSE
                     result = idemessagebox("Run", "Your program will be compiled to your QB64 folder. You can" + CHR$(10) + _
                                          "change that by checking the option 'Output EXE to Source" + CHR$(10) + _
-                                         "Folder' in the Run menu.", "OK;Don't show this again")
+                                         "Folder' in the Run menu.", "#OK;#Don't show this again;#Cancel")
                 END IF
                 IF result = 2 THEN
                     WriteConfigSetting "'[GENERAL SETTINGS]", "ExeToSourceFolderFirstTimeMsg", "TRUE"
                     ExeToSourceFolderFirstTimeMsg = -1
+                ELSEIF result = 3 THEN
+                    PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
+                    LOCATE , , 0
+                    COLOR 7, 1: LOCATE idewy - 3, 2: PRINT SPACE$(idewx - 2);: LOCATE idewy - 2, 2: PRINT SPACE$(idewx - 2);: LOCATE idewy - 1, 2: PRINT SPACE$(idewx - 2); 'clear status window
+                    LOCATE idewy - 3, 2
+                    PRINT "Compilation request canceled."
+                    GOTO specialchar
                 END IF
             END IF
             PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
@@ -1509,6 +1539,18 @@ FUNCTION ide2 (ignore)
                         ELSE
                             PRINT "Already created .EXE file!";
                         END IF
+
+                        LOCATE idewy - 2, 2
+                        PRINT "Location: ";
+                        COLOR 11, 1
+                        location$ = lastBinaryGenerated$
+                        IF path.exe$ = "" THEN location$ = _STARTDIR$ + pathsep$ + location$
+                        IF POS(0) + LEN(location$) > idewx THEN
+                            PRINT "..."; RIGHT$(location$, idewx - 15);
+                        ELSE
+                            PRINT location$;
+                        END IF
+                        statusarealink = 3
 
                         GOTO specialchar
                     ELSEIF _FILEEXISTS(lastBinaryGenerated$) = 0 THEN
@@ -2786,6 +2828,8 @@ FUNCTION ide2 (ignore)
                             p$ = QuotedFilename$(COMMAND$(0)) + " " + QuotedFilename$(f$)
                             IF errorLineInInclude > 0 AND idefocusline = idecy THEN
                                 p$ = p$ + " -l:" + str2$(errorLineInInclude)
+                            ELSEIF warningInIncludeLine > 0 AND warningInInclude = idecy THEN
+                                p$ = p$ + " -l:" + str2$(warningInIncludeLine)
                             END IF
                             SHELL p$
 
@@ -3094,7 +3138,7 @@ FUNCTION ide2 (ignore)
                 idecy = idefocusline
                 ideselect = 0
             ELSE
-                retval = idegotobox
+                idegotobox
                 'retval is ignored
                 PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
             END IF
@@ -4825,6 +4869,7 @@ FUNCTION ide2 (ignore)
                     menu$(RunMenuID, RunMenuSaveExeWithSource) = "Output EXE to Source #Folder"
                 END IF
                 PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
+                idecompiled = 0
                 GOTO ideloop
             END IF
 
@@ -4915,8 +4960,7 @@ FUNCTION ide2 (ignore)
 
             IF menu$(m, s) = "#Go To Line...  Ctrl+G" THEN
                 PCOPY 2, 0
-                retval = idegotobox
-                'retval is ignored
+                idegotobox
                 PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
                 GOTO ideloop
             END IF
@@ -5551,7 +5595,8 @@ FUNCTION ide2 (ignore)
 
             IF menu$(m, s) = "Modify #COMMAND$..." THEN
                 PCOPY 2, 0
-                retval = idemodifycommandbox
+                ModifyCOMMAND$ = " " + ideinputbox$("Modify COMMAND$", "#Enter text for COMMAND$", _TRIM$(ModifyCOMMAND$), "", 60, 0)
+                IF _TRIM$(ModifyCOMMAND$) = "" THEN ModifyCOMMAND$ = ""
                 'retval is ignored
                 PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
                 GOTO ideloop
@@ -5850,7 +5895,7 @@ FUNCTION ide2 (ignore)
     LOOP
 
     IF NOT FoundBrokenLink THEN
-        ideerrormessage "All files in the list are accessible."
+        result = idemessagebox("Remove Broken Links", "All files in the list are accessible.", "#OK")
     END IF
 
     IF ln > 0 AND FoundBrokenLink THEN
@@ -6653,9 +6698,36 @@ SUB idedrawobj (o AS idedbotype, f)
                         IF o.sel = n THEN COLOR 7, 0 ELSE COLOR 0, 7
                         IF (o.sel = n OR -o.sel = n) AND o.foc = 0 THEN o.cx = o.par.x + o.x + 2: o.cy = o.par.y + o.y + y
                         LOCATE o.par.y + o.y + y, o.par.x + o.x + 1
-                        a3$ = " " + a3$ + SPACE$(o.w)
-                        a3$ = LEFT$(a3$, o.w)
-                        PRINT a3$;
+                        a3$ = " " + a3$
+                        IF INSTR(a3$, CHR$(16)) THEN
+                            'color formatting: CHR$(16) + CHR$(color)
+                            '                  CHR$(16) + CHR$(16) restores default
+                            position = 0: character = 0
+                            FOR cf = POS(1) TO POS(1) + o.w
+                                character = character + 1
+                                IF character > LEN(a3$) THEN
+                                    PRINT SPACE$(o.w - (POS(1) - (o.par.x + o.x)) + 1);
+                                    EXIT FOR
+                                END IF
+                                IF ASC(a3$, character) = 16 AND character < LEN(a3$) THEN
+                                    IF ASC(a3$, character + 1) >= 0 AND ASC(a3$, character + 1) <= 15 THEN
+                                        COLOR ASC(a3$, character + 1)
+                                        character = character + 1
+                                        _CONTINUE
+                                    ELSEIF ASC(a3$, character + 1) = 16 THEN
+                                        IF o.sel = n THEN COLOR 7 ELSE COLOR 0
+                                        character = character + 1
+                                        _CONTINUE
+                                    END IF
+                                END IF
+                                position = position + 1
+                                PRINT MID$(a3$, character, 1);
+                            NEXT
+                        ELSE
+                            a3$ = a3$ + SPACE$(o.w)
+                            a3$ = LEFT$(a3$, o.w)
+                            PRINT a3$;
+                        END IF
                         'customization specific for the SUBs list, when there are external procedures:
                         IF INSTR(a3$, CHR$(196) + "*") > 0 THEN
                             IF o.sel = n THEN COLOR 2, 0 ELSE COLOR 2, 7
@@ -6683,7 +6755,7 @@ SUB idedrawobj (o AS idedbotype, f)
     IF o.typ = 3 THEN
         IF o.x = 0 THEN o.x = 2
         IF o.w = 0 THEN o.w = o.par.w - o.x 'spanable width
-        IF o.txt = 0 THEN o.txt = idenewtxt("OK")
+        IF o.txt = 0 THEN o.txt = idenewtxt("#OK")
         a$ = idetxt(o.txt)
         n = 1
         c = 0
@@ -6760,139 +6832,7 @@ SUB idedrawpar (p AS idedbptype)
     END IF
 END SUB
 
-SUB ideerrormessage (mess$)
-
-
-    '-------- generic dialog box header --------
-    PCOPY 3, 0
-    PCOPY 0, 2
-    PCOPY 0, 1
-    SCREEN , , 1, 0
-    focus = 1
-    DIM p AS idedbptype
-    DIM o(1 TO 100) AS idedbotype
-    DIM sep AS STRING * 1
-    sep = CHR$(0)
-    '-------- end of generic dialog box header --------
-
-    '-------- init --------
-    i = 0
-    idepar p, LEN(mess$) + 4, 4, ""
-    i = i + 1
-    o(i).typ = 3
-    o(i).y = 4
-    o(i).txt = idenewtxt("OK")
-    o(i).dft = 1
-    '-------- end of init --------
-
-    '-------- generic init --------
-    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
-    '-------- end of generic init --------
-
-    DO 'main loop
-
-        '-------- generic display dialog box & objects --------
-        idedrawpar p
-        f = 1: cx = 0: cy = 0
-        FOR i = 1 TO 100
-            IF o(i).typ THEN
-                'prepare object
-                o(i).foc = focus - f 'focus offset
-                o(i).cx = 0: o(i).cy = 0
-                idedrawobj o(i), f 'display object
-                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
-            END IF
-        NEXT i
-        lastfocus = f - 1
-        '-------- end of generic display dialog box & objects --------
-
-        '-------- custom display changes --------
-        COLOR 0, 7: LOCATE p.y + 2, p.x + 3: PRINT mess$;
-        '-------- end of custom display changes --------
-
-        'update visual page and cursor position
-        PCOPY 1, 0
-        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
-
-        '-------- read input --------
-        change = 0
-        DO
-            GetInput
-            IF mWHEEL THEN change = 1
-            IF KB THEN change = 1
-            IF mCLICK THEN mousedown = 1: change = 1
-            IF mRELEASE THEN mouseup = 1: change = 1
-            IF mB THEN change = 1
-            alt = KALT: IF alt <> oldalt THEN change = 1
-            oldalt = alt
-            _LIMIT 100
-        LOOP UNTIL change
-        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
-        'convert "alt+letter" scancode to letter's ASCII character
-        altletter$ = ""
-        IF alt AND NOT KCTRL THEN
-            IF LEN(K$) = 1 THEN
-                k = ASC(UCASE$(K$))
-                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
-            END IF
-        END IF
-        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
-        '-------- end of read input --------
-
-        IF UCASE$(K$) = "Y" THEN altletter$ = "Y"
-        IF UCASE$(K$) = "N" THEN altletter$ = "N"
-
-        '-------- generic input response --------
-        info = 0
-        IF K$ = "" THEN K$ = CHR$(255)
-        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
-        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
-        IF focus < 1 THEN focus = lastfocus
-        IF focus > lastfocus THEN focus = 1
-        f = 1
-        FOR i = 1 TO 100
-            t = o(i).typ
-            IF t THEN
-                focusoffset = focus - f
-                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
-            END IF
-        NEXT
-        '-------- end of generic input response --------
-
-        IF K$ = CHR$(27) THEN
-            EXIT SUB
-        END IF
-
-        IF info THEN
-            EXIT SUB
-        END IF
-
-        'end of custom controls
-
-        mousedown = 0
-        mouseup = 0
-    LOOP
-
-
-END SUB
-
 FUNCTION idefileexists$(f$)
-    '-------- generic dialog box header --------
-    PCOPY 3, 0
-    PCOPY 0, 2
-    PCOPY 0, 1
-    SCREEN , , 1, 0
-    focus = 1
-    DIM p AS idedbptype
-    DIM o(1 TO 100) AS idedbotype
-    DIM sep AS STRING * 1
-    sep = CHR$(0)
-    '-------- end of generic dialog box header --------
-
-    '-------- init --------
-    i = 0
-    'idepar p, 30, 6, "File already exists. Overwrite?"
-
     l = LEN(f$)
     DO
         IF l < LEN(f$) THEN
@@ -6903,108 +6843,9 @@ FUNCTION idefileexists$(f$)
         l = l - 1
     LOOP UNTIL LEN(m$) + 4 < (idewx - 6)
 
-    idepar p, LEN(m$) + 4, 4, ""
-    i = i + 1
-    o(i).typ = 3
-    o(i).y = 4
-    o(i).txt = idenewtxt("#Yes" + sep + "#No")
-    o(i).dft = 1
-    '-------- end of init --------
-
-    '-------- generic init --------
-    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
-    '-------- end of generic init --------
-
-    DO 'main loop
-
-        '-------- generic display dialog box & objects --------
-        idedrawpar p
-        f = 1: cx = 0: cy = 0
-        FOR i = 1 TO 100
-            IF o(i).typ THEN
-                'prepare object
-                o(i).foc = focus - f 'focus offset
-                o(i).cx = 0: o(i).cy = 0
-                idedrawobj o(i), f 'display object
-                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
-            END IF
-        NEXT i
-        lastfocus = f - 1
-        '-------- end of generic display dialog box & objects --------
-
-        '-------- custom display changes --------
-        COLOR 0, 7: LOCATE p.y + 2, p.x + 3: PRINT m$;
-        '-------- end of custom display changes --------
-
-        'update visual page and cursor position
-        PCOPY 1, 0
-        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
-
-        '-------- read input --------
-        change = 0
-        DO
-            GetInput
-            IF mWHEEL THEN change = 1
-            IF KB THEN change = 1
-            IF mCLICK THEN mousedown = 1: change = 1
-            IF mRELEASE THEN mouseup = 1: change = 1
-            IF mB THEN change = 1
-            alt = KALT: IF alt <> oldalt THEN change = 1
-            oldalt = alt
-            _LIMIT 100
-        LOOP UNTIL change
-        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
-        'convert "alt+letter" scancode to letter's ASCII character
-        altletter$ = ""
-        IF alt AND NOT KCTRL THEN
-            IF LEN(K$) = 1 THEN
-                k = ASC(UCASE$(K$))
-                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
-            END IF
-        END IF
-        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
-        '-------- end of read input --------
-
-        IF UCASE$(K$) = "Y" THEN altletter$ = "Y"
-        IF UCASE$(K$) = "N" THEN altletter$ = "N"
-
-        '-------- generic input response --------
-        info = 0
-        IF K$ = "" THEN K$ = CHR$(255)
-        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
-        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
-        IF focus < 1 THEN focus = lastfocus
-        IF focus > lastfocus THEN focus = 1
-        f = 1
-        FOR i = 1 TO 100
-            t = o(i).typ
-            IF t THEN
-                focusoffset = focus - f
-                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
-            END IF
-        NEXT
-        '-------- end of generic input response --------
-
-        IF K$ = CHR$(27) THEN
-            idefileexists$ = "N"
-            EXIT FUNCTION
-        END IF
-
-        IF info THEN
-            IF info = 1 THEN idefileexists$ = "Y" ELSE idefileexists$ = "N"
-            EXIT FUNCTION
-        END IF
-
-        'end of custom controls
-        mousedown = 0
-        mouseup = 0
-    LOOP
-
-
+    result = idemessagebox("Save", m$, "#Yes;#No")
+    IF result = 1 THEN idefileexists$ = "Y" ELSE idefileexists$ = "N"
 END FUNCTION
-
-
-
 
 FUNCTION idefind$
 
@@ -7118,7 +6959,7 @@ FUNCTION idefind$
     i = i + 1
     o(i).typ = 3
     o(i).y = 11
-    o(i).txt = idenewtxt("OK" + sep + "#Cancel")
+    o(i).txt = idenewtxt("#OK" + sep + "#Cancel")
     o(i).dft = 1
     '-------- end of init --------
 
@@ -7550,7 +7391,7 @@ SUB ideinsline (i, text$)
     iden = iden + 1
 END SUB
 
-SUB idenewsf (sf AS STRING)
+FUNCTION ideinputbox$(title$, caption$, initialvalue$, validinput$, boxwidth, maxlength)
 
 
     '-------- generic dialog box header --------
@@ -7566,7 +7407,143 @@ SUB idenewsf (sf AS STRING)
 
     '-------- init --------
 
-    'built initial name if word selected
+    i = 0
+
+    idepar p, boxwidth, 5, title$
+
+    i = i + 1
+    PrevFocus = 1
+    o(i).typ = 1
+    o(i).y = 2
+    o(i).nam = idenewtxt(caption$)
+    o(i).txt = idenewtxt(initialvalue$)
+    IF LEN(initialvalue$) > 0 THEN o(i).issel = -1
+    o(i).sx1 = 0
+    o(i).v1 = LEN(initialvalue$)
+
+    i = i + 1
+    o(i).typ = 3
+    o(i).y = 5
+    o(i).txt = idenewtxt("#OK" + sep + "#Cancel")
+    o(i).dft = 1
+    '-------- end of init --------
+
+    '-------- generic init --------
+    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
+    '-------- end of generic init --------
+
+    DO 'main loop
+
+
+        '-------- generic display dialog box & objects --------
+        idedrawpar p
+        f = 1: cx = 0: cy = 0
+        FOR i = 1 TO 100
+            IF o(i).typ THEN
+
+                'prepare object
+                o(i).foc = focus - f 'focus offset
+                o(i).cx = 0: o(i).cy = 0
+                idedrawobj o(i), f 'display object
+                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
+            END IF
+        NEXT i
+        lastfocus = f - 1
+        '-------- end of generic display dialog box & objects --------
+
+        '-------- custom display changes --------
+        '-------- end of custom display changes --------
+
+        'update visual page and cursor position
+        PCOPY 1, 0
+        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
+
+        '-------- read input --------
+        change = 0
+        DO
+            GetInput
+            IF mWHEEL THEN change = 1
+            IF KB THEN change = 1
+            IF mCLICK THEN mousedown = 1: change = 1
+            IF mRELEASE THEN mouseup = 1: change = 1
+            IF mB THEN change = 1
+            alt = KALT: IF alt <> oldalt THEN change = 1
+            oldalt = alt
+            _LIMIT 100
+        LOOP UNTIL change
+        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
+        'convert "alt+letter" scancode to letter's ASCII character
+        altletter$ = ""
+        IF alt AND NOT KCTRL THEN
+            IF LEN(K$) = 1 THEN
+                k = ASC(UCASE$(K$))
+                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
+            END IF
+        END IF
+        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
+        '-------- end of read input --------
+
+        '-------- generic input response --------
+        info = 0
+        IF K$ = "" THEN K$ = CHR$(255)
+        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
+        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
+        IF focus < 1 THEN focus = lastfocus
+        IF focus > lastfocus THEN focus = 1
+        f = 1
+        FOR i = 1 TO 100
+            t = o(i).typ
+            IF t THEN
+                focusoffset = focus - f
+                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
+            END IF
+        NEXT
+        '-------- end of generic input response --------
+
+        'specific post controls
+        IF focus <> PrevFocus THEN
+            'Always start with TextBox values selected upon getting focus
+            PrevFocus = focus
+            IF focus = 1 THEN
+                o(focus).v1 = LEN(idetxt(o(focus).txt))
+                IF o(focus).v1 > 0 THEN o(focus).issel = -1
+                o(focus).sx1 = 0
+            END IF
+        END IF
+
+        IF LEN(validinput$) THEN
+            a$ = idetxt(o(1).txt)
+            tempA$ = ""
+            FOR i = 1 TO LEN(a$)
+                IF INSTR(validinput$, MID$(a$, i, 1)) > 0 THEN
+                    tempA$ = tempA$ + MID$(a$, i, 1)
+                END IF
+            NEXT
+            idetxt(o(1).txt) = tempA$
+        END IF
+
+        IF maxlength THEN
+            idetxt(o(1).txt) = LEFT$(idetxt(o(1).txt), maxlength)
+        END IF
+
+        IF K$ = CHR$(27) OR (focus = 3 AND info <> 0) THEN
+            EXIT FUNCTION
+        END IF
+
+        IF K$ = CHR$(13) OR (focus = 2 AND info <> 0) THEN
+            ideinputbox$ = idetxt(o(1).txt)
+            EXIT FUNCTION
+        END IF
+        'end of custom controls
+
+        mousedown = 0
+        mouseup = 0
+    LOOP
+
+END FUNCTION
+
+SUB idenewsf (sf AS STRING)
+    'build initial name if word selected
     IF ideselect THEN
         IF ideselecty1 = idecy THEN 'single line selected
             a$ = idegetline(idecy)
@@ -7579,282 +7556,34 @@ SUB idenewsf (sf AS STRING)
         END IF
     END IF
 
-    i = 0
+    newSF$ = ideinputbox$("New " + sf$, "#Name", a2$, "", 60, 40)
 
-    idepar p, 60, 5, "New " + sf$
-
-    i = i + 1
-    PrevFocus = 1
-    o(i).typ = 1
-    o(i).y = 2
-    o(i).nam = idenewtxt("#Name")
-    o(i).txt = idenewtxt(a2$)
-    IF LEN(a2$) > 0 THEN o(i).issel = -1
-    o(i).sx1 = 0
-    o(i).v1 = LEN(a2$)
-
-    i = i + 1
-    o(i).typ = 3
-    o(i).y = 5
-    o(i).txt = idenewtxt("OK" + sep + "#Cancel")
-    o(i).dft = 1
-    '-------- end of init --------
-
-    '-------- generic init --------
-    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
-    '-------- end of generic init --------
-
-    DO 'main loop
-
-
-        '-------- generic display dialog box & objects --------
-        idedrawpar p
-        f = 1: cx = 0: cy = 0
-        FOR i = 1 TO 100
-            IF o(i).typ THEN
-
-                'prepare object
-                o(i).foc = focus - f 'focus offset
-                o(i).cx = 0: o(i).cy = 0
-                idedrawobj o(i), f 'display object
-                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
-            END IF
-        NEXT i
-        lastfocus = f - 1
-        '-------- end of generic display dialog box & objects --------
-
-        '-------- custom display changes --------
-        '-------- end of custom display changes --------
-
-        'update visual page and cursor position
-        PCOPY 1, 0
-        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
-
-        '-------- read input --------
-        change = 0
-        DO
-            GetInput
-            IF mWHEEL THEN change = 1
-            IF KB THEN change = 1
-            IF mCLICK THEN mousedown = 1: change = 1
-            IF mRELEASE THEN mouseup = 1: change = 1
-            IF mB THEN change = 1
-            alt = KALT: IF alt <> oldalt THEN change = 1
-            oldalt = alt
-            _LIMIT 100
-        LOOP UNTIL change
-        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
-        'convert "alt+letter" scancode to letter's ASCII character
-        altletter$ = ""
-        IF alt AND NOT KCTRL THEN
-            IF LEN(K$) = 1 THEN
-                k = ASC(UCASE$(K$))
-                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
-            END IF
-        END IF
-        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
-        '-------- end of read input --------
-
-        '-------- generic input response --------
-        info = 0
-        IF K$ = "" THEN K$ = CHR$(255)
-        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
-        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
-        IF focus < 1 THEN focus = lastfocus
-        IF focus > lastfocus THEN focus = 1
-        f = 1
-        FOR i = 1 TO 100
-            t = o(i).typ
-            IF t THEN
-                focusoffset = focus - f
-                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
-            END IF
-        NEXT
-        '-------- end of generic input response --------
-
-        'specific post controls
-        IF focus <> PrevFocus THEN
-            'Always start with TextBox values selected upon getting focus
-            PrevFocus = focus
-            IF focus = 1 THEN
-                o(focus).v1 = LEN(idetxt(o(focus).txt))
-                IF o(focus).v1 > 0 THEN o(focus).issel = -1
-                o(focus).sx1 = 0
-            END IF
-        END IF
-
-        IF K$ = CHR$(27) OR (focus = 3 AND info <> 0) THEN
-            EXIT SUB
-        END IF
-
-        IF K$ = CHR$(13) OR (focus = 2 AND info <> 0) THEN
-            y = iden
-            y = y + 1: idesetline y, ""
-            y = y + 1: idesetline y, sf$ + " " + idetxt(o(1).txt)
-            idesy = y
-            y = y + 1: idesetline y, ""
-            idecy = y
-            y = y + 1: idesetline y, "END " + sf$
-            idecx = 1: idesx = 1
-            idechangemade = 1
-            EXIT SUB
-        END IF
-
-        'end of custom controls
-
-        mousedown = 0
-        mouseup = 0
-    LOOP
-
-
-
+    IF LEN(newSF$) THEN
+        y = iden
+        y = y + 1: idesetline y, ""
+        y = y + 1: idesetline y, sf$ + " " + newSF$
+        idesy = y
+        y = y + 1: idesetline y, ""
+        idecy = y
+        y = y + 1: idesetline y, "END " + sf$
+        idecx = 1: idesx = 1
+        idechangemade = 1
+    END IF
 END SUB
 
 FUNCTION idenewfolder$(thispath$)
+    newfolder$ = ideinputbox$("New Folder", "#Name", "", "", 60, 0)
 
-
-    '-------- generic dialog box header --------
-    PCOPY 3, 0
-    PCOPY 0, 2
-    PCOPY 0, 1
-    SCREEN , , 1, 0
-    focus = 1
-    DIM p AS idedbptype
-    DIM o(1 TO 100) AS idedbotype
-    DIM sep AS STRING * 1
-    sep = CHR$(0)
-    '-------- end of generic dialog box header --------
-
-    '-------- init --------
-
-    i = 0
-
-    idepar p, 60, 5, "New Folder"
-
-    i = i + 1
-    PrevFocus = 1
-    o(i).typ = 1
-    o(i).y = 2
-    o(i).nam = idenewtxt("#Name")
-    o(i).txt = idenewtxt(a2$)
-    IF LEN(a2$) > 0 THEN o(i).issel = -1
-    o(i).sx1 = 0
-    o(i).v1 = LEN(a2$)
-
-    i = i + 1
-    o(i).typ = 3
-    o(i).y = 5
-    o(i).txt = idenewtxt("OK" + sep + "#Cancel")
-    o(i).dft = 1
-    '-------- end of init --------
-
-    '-------- generic init --------
-    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
-    '-------- end of generic init --------
-
-    DO 'main loop
-
-
-        '-------- generic display dialog box & objects --------
-        idedrawpar p
-        f = 1: cx = 0: cy = 0
-        FOR i = 1 TO 100
-            IF o(i).typ THEN
-
-                'prepare object
-                o(i).foc = focus - f 'focus offset
-                o(i).cx = 0: o(i).cy = 0
-                idedrawobj o(i), f 'display object
-                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
-            END IF
-        NEXT i
-        lastfocus = f - 1
-        '-------- end of generic display dialog box & objects --------
-
-        '-------- custom display changes --------
-        '-------- end of custom display changes --------
-
-        'update visual page and cursor position
-        PCOPY 1, 0
-        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
-
-        '-------- read input --------
-        change = 0
-        DO
-            GetInput
-            IF mWHEEL THEN change = 1
-            IF KB THEN change = 1
-            IF mCLICK THEN mousedown = 1: change = 1
-            IF mRELEASE THEN mouseup = 1: change = 1
-            IF mB THEN change = 1
-            alt = KALT: IF alt <> oldalt THEN change = 1
-            oldalt = alt
-            _LIMIT 100
-        LOOP UNTIL change
-        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
-        'convert "alt+letter" scancode to letter's ASCII character
-        altletter$ = ""
-        IF alt AND NOT KCTRL THEN
-            IF LEN(K$) = 1 THEN
-                k = ASC(UCASE$(K$))
-                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
-            END IF
-        END IF
-        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
-        '-------- end of read input --------
-
-        '-------- generic input response --------
-        info = 0
-        IF K$ = "" THEN K$ = CHR$(255)
-        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
-        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
-        IF focus < 1 THEN focus = lastfocus
-        IF focus > lastfocus THEN focus = 1
-        f = 1
-        FOR i = 1 TO 100
-            t = o(i).typ
-            IF t THEN
-                focusoffset = focus - f
-                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
-            END IF
-        NEXT
-        '-------- end of generic input response --------
-
-        'specific post controls
-        IF focus <> PrevFocus THEN
-            'Always start with TextBox values selected upon getting focus
-            PrevFocus = focus
-            IF focus = 1 THEN
-                o(focus).v1 = LEN(idetxt(o(focus).txt))
-                IF o(focus).v1 > 0 THEN o(focus).issel = -1
-                o(focus).sx1 = 0
-            END IF
-        END IF
-
-        IF K$ = CHR$(27) OR (focus = 3 AND info <> 0) THEN
+    IF LEN(newfolder$) THEN
+        IF _DIREXISTS(thispath$ + idepathsep$ + newfolder$) THEN
+            idenewfolder$ = newfolder$
             EXIT SUB
         END IF
-
-        IF K$ = CHR$(13) OR (focus = 2 AND info <> 0) THEN
-            IF _DIREXISTS(thispath$ + idepathsep$ + idetxt(o(1).txt)) THEN
-                idenewfolder$ = idetxt(o(1).txt)
-                EXIT SUB
-            END IF
-            ideerror = 5
-            MKDIR thispath$ + idepathsep$ + idetxt(o(1).txt)
-            ideerror = 1
-            idenewfolder$ = idetxt(o(1).txt)
-            EXIT SUB
-        END IF
-
-        'end of custom controls
-
-        mousedown = 0
-        mouseup = 0
-    LOOP
-
-
-
+        ideerror = 5
+        MKDIR thispath$ + idepathsep$ + newfolder$
+        ideerror = 1
+        idenewfolder$ = newfolder$
+    END IF
 END SUB
 
 
@@ -7932,7 +7661,7 @@ FUNCTION idefiledialog$(programname$, mode AS _BYTE)
     i = i + 1
     o(i).typ = 3
     o(i).y = idewy + idesubwindow - 7
-    o(i).txt = idenewtxt("OK" + sep + "#Cancel")
+    o(i).txt = idenewtxt("#OK" + sep + "#Cancel")
     o(i).dft = 1
     '-------- end of init --------
 
@@ -8251,239 +7980,27 @@ SUB idepar (par AS idedbptype, w, h, title$)
 END SUB
 
 FUNCTION iderestore$
-
-    '-------- generic dialog box header --------
     PCOPY 3, 0
     PCOPY 0, 2
     PCOPY 0, 1
     SCREEN , , 1, 0
-    focus = 1
-    DIM p AS idedbptype
-    DIM o(1 TO 100) AS idedbotype
-    DIM sep AS STRING * 1
-    sep = CHR$(0)
-    '-------- end of generic dialog box header --------
-
-    '-------- init --------
-    i = 0
-    'idepar p, 30, 6, "File already exists. Overwrite?"
-    idepar p, 43, 4, ""
-    i = i + 1
-    o(i).typ = 3
-    o(i).y = 4
-    o(i).txt = idenewtxt("#Yes" + sep + "#No")
-    o(i).dft = 1
-    '-------- end of init --------
-
-    '-------- generic init --------
-    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
-    '-------- end of generic init --------
-
-    DO 'main loop
-
-        '-------- generic display dialog box & objects --------
-        idedrawpar p
-        f = 1: cx = 0: cy = 0
-        FOR i = 1 TO 100
-            IF o(i).typ THEN
-                'prepare object
-                o(i).foc = focus - f 'focus offset
-                o(i).cx = 0: o(i).cy = 0
-                idedrawobj o(i), f 'display object
-                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
-            END IF
-        NEXT i
-        lastfocus = f - 1
-        '-------- end of generic display dialog box & objects --------
-
-        '-------- custom display changes --------
-        COLOR 0, 7: LOCATE p.y + 2, p.x + 3: PRINT "Recover program from auto-saved backup?";
-        '-------- end of custom display changes --------
-
-        'update visual page and cursor position
-        PCOPY 1, 0
-        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
-
-        '-------- read input --------
-        change = 0
-        DO
-            GetInput
-            IF mWHEEL THEN change = 1
-            IF KB THEN change = 1
-            IF mCLICK THEN mousedown = 1: change = 1
-            IF mRELEASE THEN mouseup = 1: change = 1
-            IF mB THEN change = 1
-            alt = KALT: IF alt <> oldalt THEN change = 1
-            oldalt = alt
-            _LIMIT 100
-        LOOP UNTIL change
-        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
-        'convert "alt+letter" scancode to letter's ASCII character
-        altletter$ = ""
-        IF alt AND NOT KCTRL THEN
-            IF LEN(K$) = 1 THEN
-                k = ASC(UCASE$(K$))
-                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
-            END IF
-        END IF
-        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
-        '-------- end of read input --------
-
-        IF UCASE$(K$) = "Y" THEN altletter$ = "Y"
-        IF UCASE$(K$) = "N" THEN altletter$ = "N"
-
-        '-------- generic input response --------
-        info = 0
-        IF K$ = "" THEN K$ = CHR$(255)
-        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
-        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
-        IF focus < 1 THEN focus = lastfocus
-        IF focus > lastfocus THEN focus = 1
-        f = 1
-        FOR i = 1 TO 100
-            t = o(i).typ
-            IF t THEN
-                focusoffset = focus - f
-                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
-            END IF
-        NEXT
-        '-------- end of generic input response --------
-
-        IF info THEN
-            IF info = 1 THEN iderestore$ = "Y" ELSE iderestore$ = "N"
-            EXIT FUNCTION
-        END IF
-
-        'end of custom controls
-        mousedown = 0
-        mouseup = 0
-    LOOP
-
+    result = idemessagebox("Backup found", "Recover program from auto-saved backup?", "#Yes;#No")
+    IF result = 1 THEN iderestore$ = "Y" ELSE iderestore$ = "N"
 END FUNCTION
 
 FUNCTION ideclearhistory$ (WhichHistory$)
-
-    '-------- generic dialog box header --------
-    PCOPY 3, 0
-    PCOPY 0, 2
-    PCOPY 0, 1
-    SCREEN , , 1, 0
-    focus = 1
-    DIM p AS idedbptype
-    DIM o(1 TO 100) AS idedbotype
-    DIM sep AS STRING * 1
-    sep = CHR$(0)
-    '-------- end of generic dialog box header --------
-
-    '-------- init --------
-    i = 0
-    'idepar p, 30, 6, "File already exists. Overwrite?"
-    idepar p, 48, 4, ""
-    i = i + 1
-    o(i).typ = 3
-    o(i).y = 4
-    o(i).txt = idenewtxt("#Yes" + sep + "#No")
-    o(i).dft = 1
-    '-------- end of init --------
-
-    '-------- generic init --------
-    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
-    '-------- end of generic init --------
-
-    DO 'main loop
-
-        '-------- generic display dialog box & objects --------
-        idedrawpar p
-        f = 1: cx = 0: cy = 0
-        FOR i = 1 TO 100
-            IF o(i).typ THEN
-                'prepare object
-                o(i).foc = focus - f 'focus offset
-                o(i).cx = 0: o(i).cy = 0
-                idedrawobj o(i), f 'display object
-                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
-            END IF
-        NEXT i
-        lastfocus = f - 1
-        '-------- end of generic display dialog box & objects --------
-
-        '-------- custom display changes --------
-        COLOR 0, 7: LOCATE p.y + 2, p.x + 3
-        SELECT CASE WhichHistory$
-            CASE "SEARCH": PRINT "This cannot be undone. Clear search history?";
-            CASE "FILES": PRINT " This cannot be undone. Clear recent files?";
-            CASE "INVALID": PRINT "  Remove broken links from recent files?";
-        END SELECT
-        '-------- end of custom display changes --------
-
-        'update visual page and cursor position
-        PCOPY 1, 0
-        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
-
-        '-------- read input --------
-        change = 0
-        DO
-            GetInput
-            IF mWHEEL THEN change = 1
-            IF KB THEN change = 1
-            IF mCLICK THEN mousedown = 1: change = 1
-            IF mRELEASE THEN mouseup = 1: change = 1
-            IF mB THEN change = 1
-            alt = KALT: IF alt <> oldalt THEN change = 1
-            oldalt = alt
-            _LIMIT 100
-        LOOP UNTIL change
-        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
-        'convert "alt+letter" scancode to letter's ASCII character
-        altletter$ = ""
-        IF alt AND NOT KCTRL THEN
-            IF LEN(K$) = 1 THEN
-                k = ASC(UCASE$(K$))
-                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
-            END IF
-        END IF
-        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
-        '-------- end of read input --------
-
-        IF UCASE$(K$) = "Y" THEN altletter$ = "Y"
-        IF UCASE$(K$) = "N" THEN altletter$ = "N"
-
-        '-------- generic input response --------
-        info = 0
-        IF K$ = "" THEN K$ = CHR$(255)
-        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
-        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
-        IF focus < 1 THEN focus = lastfocus
-        IF focus > lastfocus THEN focus = 1
-        f = 1
-        FOR i = 1 TO 100
-            t = o(i).typ
-            IF t THEN
-                focusoffset = focus - f
-                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
-            END IF
-        NEXT
-        '-------- end of generic input response --------
-
-        IF info THEN
-            IF info = 1 THEN ideclearhistory$ = "Y" ELSE ideclearhistory$ = "N"
-            EXIT FUNCTION
-        END IF
-
-        IF K$ = CHR$(27) THEN
-            ideclearhistory$ = "N"
-            EXIT FUNCTION
-        END IF
-
-        'end of custom controls
-        mousedown = 0
-        mouseup = 0
-    LOOP
-
+    SELECT CASE WhichHistory$
+        CASE "SEARCH": t$ = "Clear search history": m$ = "This cannot be undone. Proceed?"
+        CASE "FILES": t$ = "Clear recent files": m$ = "This cannot be undone. Proceed?"
+    END SELECT
+    result = idemessagebox(t$, m$, "#Yes;#No")
+    IF result = 1 THEN ideclearhistory$ = "Y" ELSE ideclearhistory$ = "N"
 END FUNCTION
 
 SUB idesave (f$)
+    ideerror = 6
     OPEN f$ FOR OUTPUT AS #151
+    ideerror = 1
     FOR i = 1 TO iden
         a$ = idegetline(i)
         PRINT #151, a$
@@ -8494,122 +8011,13 @@ SUB idesave (f$)
 END SUB
 
 FUNCTION idesavenow$
-
-    '-------- generic dialog box header --------
-    PCOPY 3, 0
-    PCOPY 0, 2
-    PCOPY 0, 1
-    SCREEN , , 1, 0
-    focus = 1
-    DIM p AS idedbptype
-    DIM o(1 TO 100) AS idedbotype
-    DIM sep AS STRING * 1
-    sep = CHR$(0)
-    '-------- end of generic dialog box header --------
-
-    '-------- init --------
-    i = 0
-    idepar p, 40, 4, ""
-    i = i + 1
-    o(i).typ = 3
-    o(i).y = 4
-    o(i).txt = idenewtxt("#Yes" + sep + "#No" + sep + "#Cancel")
-    o(i).dft = 1
-    '-------- end of init --------
-
-    '-------- generic init --------
-    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
-    '-------- end of generic init --------
-
-    DO 'main loop
-
-        '-------- generic display dialog box & objects --------
-        idedrawpar p
-        f = 1: cx = 0: cy = 0
-        FOR i = 1 TO 100
-            IF o(i).typ THEN
-                'prepare object
-                o(i).foc = focus - f 'focus offset
-                o(i).cx = 0: o(i).cy = 0
-                idedrawobj o(i), f 'display object
-                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
-            END IF
-        NEXT i
-        lastfocus = f - 1
-        '-------- end of generic display dialog box & objects --------
-
-        '-------- custom display changes --------
-        COLOR 0, 7: LOCATE p.y + 2, p.x + 4: PRINT "Program is not saved. Save it now?";
-        '-------- end of custom display changes --------
-
-        'update visual page and cursor position
-        PCOPY 1, 0
-        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
-
-
-        '-------- read input --------
-        change = 0
-        DO
-            GetInput
-            IF mWHEEL THEN change = 1
-            IF KB THEN change = 1
-            IF mCLICK THEN mousedown = 1: change = 1
-            IF mRELEASE THEN mouseup = 1: change = 1
-            IF mB THEN change = 1
-            alt = KALT: IF alt <> oldalt THEN change = 1
-            oldalt = alt
-            _LIMIT 100
-        LOOP UNTIL change
-        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
-        'convert "alt+letter" scancode to letter's ASCII character
-        altletter$ = ""
-        IF alt AND NOT KCTRL THEN
-            IF LEN(K$) = 1 THEN
-                k = ASC(UCASE$(K$))
-                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
-            END IF
-        END IF
-        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
-        '-------- end of read input --------
-
-        IF UCASE$(K$) = "Y" THEN altletter$ = "Y"
-        IF UCASE$(K$) = "N" THEN altletter$ = "N"
-        IF UCASE$(K$) = "C" THEN altletter$ = "C"
-
-        '-------- generic input response --------
-        info = 0
-        IF K$ = "" THEN K$ = CHR$(255)
-        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
-        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
-        IF focus < 1 THEN focus = lastfocus
-        IF focus > lastfocus THEN focus = 1
-        f = 1
-        FOR i = 1 TO 100
-            t = o(i).typ
-            IF t THEN
-                focusoffset = focus - f
-                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
-            END IF
-        NEXT
-        '-------- end of generic input response --------
-
-        IF K$ = CHR$(27) THEN
-            idesavenow$ = "C"
-            EXIT FUNCTION
-        END IF
-
-        IF info THEN
-            IF info = 1 THEN idesavenow$ = "Y"
-            IF info = 2 THEN idesavenow$ = "N"
-            IF info = 3 THEN idesavenow$ = "C"
-            EXIT FUNCTION
-        END IF
-
-        'end of custom controls
-        mousedown = 0
-        mouseup = 0
-    LOOP
-
+    m$ = "Program is not saved. Save it now?"
+    result = idemessagebox("", m$, "#Yes;#No;#Cancel")
+    SELECT CASE result
+        CASE 1: idesavenow$ = "Y"
+        CASE 2: idesavenow$ = "N"
+        CASE 0, 3: idesavenow$ = "C"
+    END SELECT
 END FUNCTION
 
 SUB idesetline (i, text$)
@@ -9393,8 +8801,8 @@ FUNCTION idesubs$
                 num$ = LTRIM$(STR$(TotalLines(TotalSUBs)))
                 IF pInsideDECLARE THEN num$ = "external"
                 lSized$ = lSized$ + CHR$(195) + CHR$(196) + pn$ + "  " + _
-                          SPACE$(9 - LEN(num$)) + num$ + "  " _
-                          + psf$ + pargs$ + sep
+                          CHR$(16) + CHR$(2) + SPACE$(9 - LEN(num$)) + num$ + "  " _
+                          + psf$ + CHR$(16) + CHR$(16) + pargs$ + sep
             END IF
 
             IF LEN(n$) <= 20 THEN
@@ -9407,7 +8815,8 @@ FUNCTION idesubs$
             ELSE
                 args$ = LEFT$(args$, (idewx - 44)) + STRING$(3, 250)
             END IF
-            l$ = l$ + sep + CHR$(195) + CHR$(196) + n$ + "  " + sf$ + args$
+            l$ = l$ + sep + CHR$(195) + CHR$(196) + n$ + "  " + CHR$(16) + CHR$(2) + _
+                 sf$ + CHR$(16) + CHR$(16) + args$
             psf$ = sf$
             pn$ = n$
             pargs$ = args$
@@ -9419,7 +8828,7 @@ FUNCTION idesubs$
             REDIM _PRESERVE SortedSubsList(1 TO TotalSUBs) AS STRING * 998
             REDIM _PRESERVE CaseBkpSubsList(1 TO TotalSUBs) AS STRING * 998
             REDIM _PRESERVE TotalLines(0 TO TotalSUBs) AS LONG
-            CaseBkpSubsList(TotalSUBs) = n$ + "  " + CHR$(1) + sf$ + args$
+            CaseBkpSubsList(TotalSUBs) = n$ + "  " + CHR$(1) + CHR$(16) + CHR$(2) + sf$ + CHR$(16) + CHR$(16) + args$
             SortedSubsList(TotalSUBs) = UCASE$(CaseBkpSubsList(TotalSUBs))
             MID$(CaseBkpSubsList(TotalSUBs), 992, 6) = MKL$(y) + MKI$(ListItemLength)
             MID$(SortedSubsList(TotalSUBs), 992, 6) = MKL$(y) + MKI$(ListItemLength)
@@ -9451,7 +8860,8 @@ FUNCTION idesubs$
         num$ = LTRIM$(STR$(TotalLines(TotalSUBs)))
         IF pInsideDECLARE THEN num$ = "external"
         lSized$ = lSized$ + CHR$(195) + CHR$(196) + pn$ + "  " + _
-                  SPACE$(9 - LEN(num$)) + num$ + "  " + psf$ + pargs$
+                  SPACE$(9 - LEN(num$)) + CHR$(16) + CHR$(2) + num$ + "  " + _
+                  psf$ + CHR$(16) + CHR$(16) + pargs$
     END IF
 
     MID$(l$, _INSTRREV(l$, CHR$(195)), 1) = CHR$(192)
@@ -9474,7 +8884,7 @@ FUNCTION idesubs$
                     IF LEFT$(temp$, 1) = "*" THEN num$ = "external"
                     lSortedSized$ = lSortedSized$ + sep + CHR$(195) + CHR$(196)
                     lSortedSized$ = lSortedSized$ + LEFT$(temp$, INSTR(temp$, CHR$(1)) - 1) + _
-                                    SPACE$(9 - LEN(num$)) + num$ + "  " + _
+                                    SPACE$(9 - LEN(num$)) + CHR$(16) + CHR$(2) + num$ + "  " + _
                                     MID$(temp$, INSTR(temp$, CHR$(1)) + 1)
                     EXIT FOR
                 END IF
@@ -9906,18 +9316,50 @@ FUNCTION idewarningbox
     '-------- init --------
 
     DIM warningLines(1 TO warningListItems) AS LONG
+    DIM warningIncLines(1 TO warningListItems) AS LONG
+    DIM warningIncFiles(1 TO warningListItems) AS STRING
 
+    IF LEN(ideprogname) THEN thisprog$ = ideprogname ELSE thisprog$ = "Untitled" + tempfolderindexstr$
+    maxModuleNameLen = LEN(thisprog$)
+
+    'fill arrays
     FOR x = 1 TO warningListItems
         warningLines(x) = CVL(LEFT$(warning$(x), 4))
+        IF warningLines(x) = 0 THEN _CONTINUE
+
+        warningIncLevel = CVL(MID$(warning$(x), 5, 4))
+        IF warningIncLevel > 0 THEN
+            warningIncLines(x) = CVL(MID$(warning$(x), 9, 4))
+            warningIncFiles(x) = MID$(warning$(x), 13, INSTR(warning$(x), CHR$(2)) - 13)
+            IF LEN(warningIncFiles(x)) > maxModuleNameLen THEN
+                maxModuleNameLen = LEN(warningIncFiles(x))
+            END IF
+        END IF
+    NEXT
+
+    'build list
+    FOR x = 1 TO warningListItems
         IF warningLines(x) = 0 THEN
-            l$ = l$ + MID$(warning$(x), 5)
+            l$ = l$ + MID$(warning$(x), INSTR(warning$(x), CHR$(2)) + 1)
             IF x > 1 THEN ASC(l$, treeConnection) = 192
         ELSE
-            l2$ = "line" + STR$(warningLines(x))
-            l3$ = SPACE$(maxLineNumberLength + 4)
-            RSET l3$ = l2$
+            l3$ = CHR$(16) + CHR$(2) 'dark grey
+            IF warningIncLines(x) > 0 THEN
+                num$ = SPACE$(maxLineNumberLength)
+                RSET num$ = str2$(warningIncLines(x))
+                l3$ = l3$ + warningIncFiles(x) + SPACE$(maxModuleNameLen - LEN(warningIncFiles(x))) + ":" + CHR$(16) + CHR$(16) + num$
+            ELSE
+                num$ = SPACE$(maxLineNumberLength)
+                RSET num$ = str2$(warningLines(x))
+                l3$ = l3$ + thisprog$ + SPACE$(maxModuleNameLen - LEN(thisprog$)) + ":" + CHR$(16) + CHR$(16) + num$
+            END IF
             treeConnection = LEN(l$) + 1
-            l$ = l$ + CHR$(195) + CHR$(196) + l3$ + ": " + MID$(warning$(x), 5)
+            text$ = MID$(warning$(x), INSTR(warning$(x), CHR$(2)) + 1)
+            IF LEN(text$) THEN
+                l$ = l$ + CHR$(195) + CHR$(196) + l3$ + ": " + text$
+            ELSE
+                l$ = l$ + CHR$(195) + CHR$(196) + l3$
+            END IF
         END IF
         IF x < warningListItems THEN l$ = l$ + sep
     NEXT
@@ -10036,6 +9478,10 @@ FUNCTION idewarningbox
                 idegotobox_LastLineNum = warningLines(y)
                 AddQuickNavHistory idecy
                 idecy = idegotobox_LastLineNum
+                IF warningIncLines(y) > 0 THEN
+                    warningInInclude = idecy
+                    warningInIncludeLine = warningIncLines(y)
+                END IF
                 ideselect = 0
                 EXIT FUNCTION
             END IF
@@ -10949,13 +10395,13 @@ FUNCTION idelayoutbox
     i = i + 1
     o(i).typ = 4
     o(i).y = 6
-    o(i).nam = idenewtxt("Indent #SUBs and FUNCTIONs")
+    o(i).nam = idenewtxt("Indent SUBs and #FUNCTIONs")
     o(i).sel = ideindentsubs
 
     i = i + 1
     o(i).typ = 3
     o(i).y = 8
-    o(i).txt = idenewtxt("OK" + sep + "#Cancel")
+    o(i).txt = idenewtxt("#OK" + sep + "#Cancel")
     o(i).dft = 1
     '-------- end of init --------
 
@@ -11140,7 +10586,7 @@ FUNCTION idebackupbox
     i = i + 1
     o(i).typ = 3
     o(i).y = 5
-    o(i).txt = idenewtxt("OK" + sep + "#Cancel")
+    o(i).txt = idenewtxt("#OK" + sep + "#Cancel")
     o(i).dft = 1
     '-------- end of init --------
 
@@ -11271,299 +10717,19 @@ FUNCTION idebackupbox
     LOOP
 END FUNCTION
 
-
-
-
-FUNCTION idemodifycommandbox
-    '-------- generic dialog box header --------
-    PCOPY 0, 2
-    PCOPY 0, 1
-    SCREEN , , 1, 0
-    focus = 1
-    DIM p AS idedbptype
-    DIM o(1 TO 100) AS idedbotype
-    DIM sep AS STRING * 1
-    sep = CHR$(0)
-    '-------- end of generic dialog box header --------
-
-    '-------- init --------
-    i = 0
-    idepar p, 65, 5, "Modify COMMAND$"
-
-    a2$ = ModifyCOMMAND$
-    IF LEN(a2$) > 0 THEN a2$ = MID$(a2$, 2)
-    i = i + 1
-    PrevFocus = 1
-    o(i).typ = 1
-    o(i).y = 2
-    o(i).nam = idenewtxt("#Enter text for COMMAND$")
-    o(i).txt = idenewtxt(a2$)
-    o(i).v1 = LEN(a2$)
-    IF o(i).v1 > 0 THEN
-        o(i).issel = -1
-        o(i).sx1 = 0
-    END IF
-
-    i = i + 1
-    o(i).typ = 3
-    o(i).y = 5
-    o(i).txt = idenewtxt("OK" + sep + "#Cancel")
-    o(i).dft = 1
-    '-------- end of init --------
-
-    '-------- generic init --------
-    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
-    '-------- end of generic init --------
-
-    DO 'main loop
-
-
-        '-------- generic display dialog box & objects --------
-        idedrawpar p
-        f = 1: cx = 0: cy = 0
-        FOR i = 1 TO 100
-            IF o(i).typ THEN
-
-                'prepare object
-                o(i).foc = focus - f 'focus offset
-                o(i).cx = 0: o(i).cy = 0
-                idedrawobj o(i), f 'display object
-                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
-            END IF
-        NEXT i
-        lastfocus = f - 1
-        '-------- end of generic display dialog box & objects --------
-
-        '-------- custom display changes --------
-        '-------- end of custom display changes --------
-
-        'update visual page and cursor position
-        PCOPY 1, 0
-        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
-
-        '-------- read input --------
-        change = 0
-        DO
-            GetInput
-            IF mWHEEL THEN change = 1
-            IF KB THEN change = 1
-            IF mCLICK THEN mousedown = 1: change = 1
-            IF mRELEASE THEN mouseup = 1: change = 1
-            IF mB THEN change = 1
-            alt = KALT: IF alt <> oldalt THEN change = 1
-            oldalt = alt
-            _LIMIT 100
-        LOOP UNTIL change
-        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
-        'convert "alt+letter" scancode to letter's ASCII character
-        altletter$ = ""
-        IF alt AND NOT KCTRL THEN
-            IF LEN(K$) = 1 THEN
-                k = ASC(UCASE$(K$))
-                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
-            END IF
-        END IF
-        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
-        '-------- end of read input --------
-
-        '-------- generic input response --------
-        info = 0
-        IF K$ = "" THEN K$ = CHR$(255)
-        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
-        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
-        IF focus < 1 THEN focus = lastfocus
-        IF focus > lastfocus THEN focus = 1
-        f = 1
-        FOR i = 1 TO 100
-            t = o(i).typ
-            IF t THEN
-                focusoffset = focus - f
-                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
-            END IF
-        NEXT
-        '-------- end of generic input response --------
-
-        'specific post controls
-        IF focus <> PrevFocus THEN
-            'Always start with TextBox values selected upon getting focus
-            PrevFocus = focus
-            IF focus = 1 THEN
-                o(focus).v1 = LEN(idetxt(o(focus).txt))
-                IF o(focus).v1 > 0 THEN o(focus).issel = -1
-                o(focus).sx1 = 0
-            END IF
-        END IF
-
-        IF K$ = CHR$(27) OR (focus = 3 AND info <> 0) THEN EXIT FUNCTION
-
-        IF K$ = CHR$(13) OR (focus = 2 AND info <> 0) THEN
-            ModifyCOMMAND$ = " " + idetxt(o(1).txt)
-            IF LTRIM$(RTRIM$(ModifyCOMMAND$)) = "" THEN ModifyCOMMAND$ = ""
-            EXIT FUNCTION
-        END IF
-
-        'end of custom controls
-
-        mousedown = 0
-        mouseup = 0
-    LOOP
-    idemodifycommandbox = 0
-END FUNCTION
-
-FUNCTION idegotobox
-    '-------- generic dialog box header --------
-    PCOPY 0, 2
-    PCOPY 0, 1
-    SCREEN , , 1, 0
-    focus = 1
-    DIM p AS idedbptype
-    DIM o(1 TO 100) AS idedbotype
-    DIM sep AS STRING * 1
-    sep = CHR$(0)
-    '-------- end of generic dialog box header --------
-
-    '-------- init --------
-    i = 0
-    idepar p, 30, 5, "Go To Line"
-
+SUB idegotobox
     IF idegotobox_LastLineNum > 0 THEN a2$ = str2$(idegotobox_LastLineNum) ELSE a2$ = ""
-    i = i + 1
-    PrevFocus = 1
-    o(i).typ = 1
-    o(i).y = 2
-    o(i).nam = idenewtxt("#Line")
-    o(i).txt = idenewtxt(a2$)
-    o(i).v1 = LEN(a2$)
-    IF o(i).v1 > 0 THEN
-        o(i).issel = -1
-        o(i).sx1 = 0
-    END IF
+    v$ = ideinputbox$("Go To Line", "#Line", a2$, "0123456789", 30, 8)
+    IF v$ = "" THEN EXIT SUB
 
-    i = i + 1
-    o(i).typ = 3
-    o(i).y = 5
-    o(i).txt = idenewtxt("OK" + sep + "#Cancel")
-    o(i).dft = 1
-    '-------- end of init --------
-
-    '-------- generic init --------
-    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
-    '-------- end of generic init --------
-
-    DO 'main loop
-
-
-        '-------- generic display dialog box & objects --------
-        idedrawpar p
-        f = 1: cx = 0: cy = 0
-        FOR i = 1 TO 100
-            IF o(i).typ THEN
-
-                'prepare object
-                o(i).foc = focus - f 'focus offset
-                o(i).cx = 0: o(i).cy = 0
-                idedrawobj o(i), f 'display object
-                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
-            END IF
-        NEXT i
-        lastfocus = f - 1
-        '-------- end of generic display dialog box & objects --------
-
-        '-------- custom display changes --------
-        '-------- end of custom display changes --------
-
-        'update visual page and cursor position
-        PCOPY 1, 0
-        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
-
-        '-------- read input --------
-        change = 0
-        DO
-            GetInput
-            IF mWHEEL THEN change = 1
-            IF KB THEN change = 1
-            IF mCLICK THEN mousedown = 1: change = 1
-            IF mRELEASE THEN mouseup = 1: change = 1
-            IF mB THEN change = 1
-            alt = KALT: IF alt <> oldalt THEN change = 1
-            oldalt = alt
-            _LIMIT 100
-        LOOP UNTIL change
-        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
-        'convert "alt+letter" scancode to letter's ASCII character
-        altletter$ = ""
-        IF alt AND NOT KCTRL THEN
-            IF LEN(K$) = 1 THEN
-                k = ASC(UCASE$(K$))
-                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
-            END IF
-        END IF
-        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
-        '-------- end of read input --------
-
-        '-------- generic input response --------
-        info = 0
-        IF K$ = "" THEN K$ = CHR$(255)
-        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
-        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
-        IF focus < 1 THEN focus = lastfocus
-        IF focus > lastfocus THEN focus = 1
-        f = 1
-        FOR i = 1 TO 100
-            t = o(i).typ
-            IF t THEN
-                focusoffset = focus - f
-                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
-            END IF
-        NEXT
-        '-------- end of generic input response --------
-
-        'specific post controls
-        IF focus <> PrevFocus THEN
-            'Always start with TextBox values selected upon getting focus
-            PrevFocus = focus
-            IF focus = 1 THEN
-                o(focus).v1 = LEN(idetxt(o(focus).txt))
-                IF o(focus).v1 > 0 THEN o(focus).issel = -1
-                o(focus).sx1 = 0
-            END IF
-        END IF
-
-        a$ = idetxt(o(1).txt)
-        IF LEN(a$) > 8 THEN a$ = LEFT$(a$, 8) '8 character limit
-        FOR i = 1 TO LEN(a$)
-            a = ASC(a$, i)
-            IF i = 2 AND ASC(a$, 1) = 48 THEN a$ = "0": EXIT FOR
-            IF a < 48 OR a > 57 THEN a$ = LEFT$(a$, i - 1): EXIT FOR
-        NEXT
-        IF focus <> 1 THEN
-            a = VAL(a$)
-            IF a < 1 THEN a$ = "1"
-        END IF
-        idetxt(o(1).txt) = a$
-
-        IF K$ = CHR$(27) OR (focus = 3 AND info <> 0) THEN EXIT FUNCTION
-
-        IF K$ = CHR$(13) OR (focus = 2 AND info <> 0) THEN
-            v$ = idetxt(o(1).txt)
-            v& = VAL(v$)
-            IF v& < 1 THEN v& = 1
-            IF v& > iden THEN v& = iden
-            idegotobox_LastLineNum = v&
-            AddQuickNavHistory idecy
-            idecy = v&
-            ideselect = 0
-            EXIT FUNCTION
-        END IF
-
-        'end of custom controls
-
-        mousedown = 0
-        mouseup = 0
-    LOOP
-
-    idegotobox = 0
-END FUNCTION
+    v& = VAL(v$)
+    IF v& < 1 THEN v& = 1
+    IF v& > iden THEN v& = iden
+    idegotobox_LastLineNum = v&
+    AddQuickNavHistory idecy
+    idecy = v&
+    ideselect = 0
+END SUB
 
 
 
@@ -11802,7 +10968,7 @@ FUNCTION idemessagebox (titlestr$, messagestr$, buttons$)
     i = i + 1
     o(i).typ = 3
     o(i).y = 3 + MessageLines
-    IF buttons$ = "" THEN buttons$ = "OK"
+    IF buttons$ = "" THEN buttons$ = "#OK"
     o(i).txt = idenewtxt(StrReplace$(buttons$, ";", sep))
     o(i).dft = 1
     '-------- end of init --------
@@ -11869,6 +11035,9 @@ FUNCTION idemessagebox (titlestr$, messagestr$, buttons$)
 
         '-------- generic input response --------
         info = 0
+
+        IF UCASE$(K$) >= "A" AND UCASE$(K$) <= "Z" THEN altletter$ = UCASE$(K$)
+
         IF K$ = "" THEN K$ = CHR$(255)
         IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
         IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
@@ -11992,7 +11161,7 @@ FUNCTION idedisplaybox
     i = i + 1
     o(i).typ = 3
     o(i).y = 18
-    o(i).txt = idenewtxt("OK" + sep + "#Cancel")
+    o(i).txt = idenewtxt("#OK" + sep + "#Cancel")
     o(i).dft = 1
     '-------- end of init --------
 
@@ -13476,13 +12645,13 @@ FUNCTION idecolorpicker$ (editing)
                         detail$ = "can't insert - multiple lines"
                     END IF
                     _CLIPBOARD$ = CurrentRGB$
-                    ideerrormessage "Copied to the clipboard (" + detail$ + ")."
+                    result = idemessagebox("RGB Color Mixer", "Copied to the clipboard (" + detail$ + ").", "#OK")
                 END IF
             ELSE
                 IF ideselect THEN
                     IF ideselecty1 <> idecy THEN
                         _CLIPBOARD$ = CurrentRGB$
-                        ideerrormessage "Copied to the clipboard (can't insert - multiple lines)."
+                        result = idemessagebox("RGB Color Mixer", "Copied to the clipboard (can't insert - multiple lines).", "#OK")
                     ELSE
                         'Delete selection and insert current RGB values
                         sx1 = ideselectx1: sx2 = idecx
@@ -13752,6 +12921,7 @@ SUB Help_ShowText
     'LOOP UNTIL c
 
 END SUB
+
 
 
 FUNCTION idesearchedbox$
@@ -14027,7 +13197,7 @@ FUNCTION iderecentbox$
     i = i + 1
     o(i).typ = 3
     o(i).y = idewy + idesubwindow - 6
-    o(i).txt = idenewtxt("#OK" + sep + "#Cancel" + sep + "Clea#r list" + sep + "#Remove broken links")
+    o(i).txt = idenewtxt("#OK" + sep + "#Cancel" + sep + "Clear #list" + sep + "#Remove broken links")
     o(i).dft = 1
 
     '-------- end of init --------
@@ -14706,7 +13876,7 @@ FUNCTION idef1box$ (lnks$, lnks)
 
     '72,19
     i = 0
-    idepar p, 40, lnks + 3, "F1"
+    idepar p, 40, lnks + 3, "Contextual help"
 
     i = i + 1
     o(i).typ = 2
@@ -14842,7 +14012,7 @@ SUB Mathbox
     i = i + 1
     o(i).typ = 3
     o(i).y = 4
-    o(i).txt = idenewtxt("OK")
+    o(i).txt = idenewtxt("#OK")
     o(i).dft = 1
     '-------- end of init --------
 
