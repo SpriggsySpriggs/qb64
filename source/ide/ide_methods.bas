@@ -351,9 +351,16 @@ FUNCTION ide2 (ignore)
         menu$(m, i) = "Ignore #Warnings": i = i + 1
         IF IgnoreWarnings THEN menu$(OptionsMenuID, OptionsMenuIgnoreWarnings) = CHR$(7) + "Ignore #Warnings"
 
-
-
         menusize(m) = i - 1
+
+        m = m + 1: i = 0
+        menu$(m, i) = "Tools": i = i + 1
+        menu$(m, i) = "#ASCII Chart...": i = i + 1
+        menu$(m, i) = "Insert Quick #Keycode  Ctrl+K": i = i + 1
+        menu$(m, i) = "#Math Evaluator...": i = i + 1
+        menu$(m, i) = "#RGB Color Mixer...": i = i + 1
+        menusize(m) = i - 1
+
 
         m = m + 1: i = 0
         menu$(m, i) = "Help": i = i + 1
@@ -361,12 +368,9 @@ FUNCTION ide2 (ignore)
         menu$(m, i) = "#Contents Page": i = i + 1
         menu$(m, i) = "Keyword #Index": i = i + 1
         menu$(m, i) = "#Keywords by Usage": i = i + 1
-        menu$(m, i) = "ASCII C#hart": i = i + 1
-        menu$(m, i) = "#Math": i = i + 1
-        menu$(m, i) = "Insert #Quick Keycode...  Ctrl+K": i = i + 1
         menu$(m, i) = "-": i = i + 1
         menu$(m, i) = "#Update Current Page": i = i + 1
-        menu$(m, i) = "Update All #Pages": i = i + 1
+        menu$(m, i) = "Update All #Pages...": i = i + 1
         menu$(m, i) = "-": i = i + 1
         menu$(m, i) = "#About...": i = i + 1
         menusize(m) = i - 1
@@ -3696,12 +3700,13 @@ FUNCTION ide2 (ignore)
 
         IF K$ = CHR$(13) THEN
             IF KSHIFT THEN
+                retval$ = ""
                 IF EnteringRGB THEN 'The "Hit Shift+ENTER" message is being shown
                     oldkeywordHighlight = keywordHighlight
                     keywordHighlight = 0
                     HideBracketHighlight
                     keywordHighlight = oldkeywordHighlight
-                    retval$ = idecolorpicker$(0)
+                    retval$ = idergbmixer$(0)
                 ELSE
                     IF ideselect THEN
                         IF ideselecty1 <> idecy THEN GOTO specialchar 'multi line selected
@@ -3718,8 +3723,25 @@ FUNCTION ide2 (ignore)
                         keywordHighlight = 0
                         HideBracketHighlight
                         keywordHighlight = oldkeywordHighlight
-                        retval$ = idecolorpicker$(-1)
+                        retval$ = idergbmixer$(-1)
                     END IF
+                END IF
+                IF LEN(retval$) THEN
+                    tempk$ = retval$
+
+                    'insert
+                    IF ideselect THEN GOSUB delselect
+                    a$ = idegetline(idecy)
+                    IF LEN(a$) < idecx - 1 THEN a$ = a$ + SPACE$(idecx - 1 - LEN(a$))
+                    a$ = LEFT$(a$, idecx - 1) + tempk$ + RIGHT$(a$, LEN(a$) - idecx + 1)
+                    idesetline idecy, a$
+
+                    IF PasteCursorAtEnd THEN
+                        'Place the cursor at the end of the inserted content:
+                        idecx = idecx + LEN(tempk$)
+                    END IF
+
+                    idechangemade = 1
                 END IF
                 GOTO specialchar
             ELSE
@@ -4765,13 +4787,30 @@ FUNCTION ide2 (ignore)
                 GOTO ideloop
             END IF
 
-            IF menu$(m, s) = "Open _RGB Color Mi#xer" THEN
+            IF menu$(m, s) = "#RGB Color Mixer..." THEN
                 PCOPY 2, 0
                 oldkeywordHighlight = keywordHighlight
                 keywordHighlight = 0
                 HideBracketHighlight
                 keywordHighlight = oldkeywordHighlight
-                retval$ = idecolorpicker$(-1) 'retval is ignored
+                retval$ = idergbmixer$(-1) 'retval is ignored
+                IF LEN(retval$) THEN
+                    tempk$ = retval$
+
+                    'insert
+                    IF ideselect THEN GOSUB delselect
+                    a$ = idegetline(idecy)
+                    IF LEN(a$) < idecx - 1 THEN a$ = a$ + SPACE$(idecx - 1 - LEN(a$))
+                    a$ = LEFT$(a$, idecx - 1) + tempk$ + RIGHT$(a$, LEN(a$) - idecx + 1)
+                    idesetline idecy, a$
+
+                    IF PasteCursorAtEnd THEN
+                        'Place the cursor at the end of the inserted content:
+                        idecx = idecx + LEN(tempk$)
+                    END IF
+
+                    idechangemade = 1
+                END IF
                 PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
                 GOTO ideloop
             END IF
@@ -4983,38 +5022,43 @@ FUNCTION ide2 (ignore)
             END IF
 
 
-            IF menu$(m, s) = "ASCII C#hart" THEN
+            IF menu$(m, s) = "#ASCII Chart..." THEN
                 PCOPY 2, 0
-                retval = ideASCIIbox%
-                IF retval THEN
-                    tempk$ = CHR$(retval)
+                DO
+                    retval$ = ideASCIIbox$(relaunch)
+                    IF LEN(retval$) THEN
+                        tempk$ = retval$
 
-                    'insert
-                    IF ideselect THEN GOSUB delselect
-                    a$ = idegetline(idecy)
-                    IF LEN(a$) < idecx - 1 THEN a$ = a$ + SPACE$(idecx - 1 - LEN(a$))
-                    a$ = LEFT$(a$, idecx - 1) + tempk$ + RIGHT$(a$, LEN(a$) - idecx + 1)
-                    idesetline idecy, a$
+                        'insert
+                        IF ideselect THEN GOSUB delselect
+                        a$ = idegetline(idecy)
+                        IF LEN(a$) < idecx - 1 THEN a$ = a$ + SPACE$(idecx - 1 - LEN(a$))
+                        a$ = LEFT$(a$, idecx - 1) + tempk$ + RIGHT$(a$, LEN(a$) - idecx + 1)
+                        idesetline idecy, a$
 
-                    IF PasteCursorAtEnd THEN
-                        'Place the cursor at the end of the inserted content:
-                        idecx = idecx + LEN(tempk$)
+                        IF PasteCursorAtEnd THEN
+                            'Place the cursor at the end of the inserted content:
+                            idecx = idecx + LEN(tempk$)
+                        END IF
+
+                        idechangemade = 1
                     END IF
-
-                    idechangemade = 1
-                END IF
-                PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
+                    PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
+                    GOSUB redrawItAll
+                    ideshowtext
+                    PCOPY 3, 0
+                LOOP WHILE relaunch
                 retval = 1
-                GOSUB redrawItAll
                 GOTO ideloop
             END IF
 
-            IF menu$(m, s) = "Insert #Quick Keycode...  Ctrl+K" THEN
+            IF menu$(m, s) = "Insert Quick #Keycode  Ctrl+K" THEN
                 PCOPY 3, 0: SCREEN , , 3, 0
                 ideQuickKeycode:
                 dummy = DarkenFGBG(1)
                 COLOR 7, 1: LOCATE idewy - 3, 2: PRINT SPACE$(idewx - 2);: LOCATE idewy - 2, 2: PRINT SPACE$(idewx - 2);: LOCATE idewy - 1, 2: PRINT SPACE$(idewx - 2); 'clear status window
                 LOCATE idewy - 3, 2
+                COLOR 15, 1
                 PRINT "Press any key to insert its _KEYHIT/_KEYDOWN code..."
                 PCOPY 3, 0
 
@@ -5135,108 +5179,94 @@ FUNCTION ide2 (ignore)
             END IF
 
 
-            IF menu$(m, s) = "#Math" THEN
-                Mathbox
+            IF menu$(m, s) = "#Math Evaluator..." THEN
+                STATIC mathEvalExpr$
+                'build initial name if word selected
+                IF ideselect THEN
+                    IF ideselecty1 = idecy THEN 'single line selected
+                        a$ = idegetline(idecy)
+                        a2$ = ""
+                        sx1 = ideselectx1: sx2 = idecx
+                        IF sx2 < sx1 THEN SWAP sx1, sx2
+                        FOR x = sx1 TO sx2 - 1
+                            IF x <= LEN(a$) THEN a2$ = a2$ + MID$(a$, x, 1) ELSE EXIT FOR
+                        NEXT
+                        a2$ = _TRIM$(a2$)
+                        IF LEN(a2$) THEN mathEvalExpr$ = a2$
+                    END IF
+                END IF
+
+                DO
+                    PCOPY 2, 0
+                    retval$ = ideinputbox$("Math Evaluator", "#Enter expression", mathEvalExpr$, "", 60, 0)
+                    result = 0
+                    IF LEN(retval$) THEN
+                        mathEvalExpr$ = retval$
+                        ev0$ = Evaluate_Expression$(retval$)
+                        ev$ = ev0$
+                        mathEvalError%% = INSTR(ev$, "ERROR") > 0
+                        IF mathEvalError%% = 0 AND mathEvalHEX%% THEN ev$ = "&H" + HEX$(VAL(ev$))
+                        DO
+                            b1$ = "#Insert;"
+                            IF mathEvalHEX%% THEN b2$ = "#Decimal;" ELSE b2$ = "#HEX$;"
+                            IF mathEvalError%% = 0 AND mathEvalComment%% THEN
+                                mathMsg$ = ev$ + " '" + retval$
+                                b3$ = "#Uncomment;"
+                            ELSE
+                                mathMsg$ = ev$
+                                b3$ = "Co#mment;"
+                            END IF
+                            IF mathEvalError%% THEN b1$ = "": b2$ = "": b3$ = ""
+                            PCOPY 2, 0
+                            result = idemessagebox("Math Evaluator - Result", mathMsg$, b1$ + b2$ + b3$ + "#Redo;#Cancel")
+                            IF mathEvalError%% = 0 THEN
+                                SELECT CASE result
+                                    CASE 1, 4, 5
+                                        EXIT DO
+                                    CASE 2
+                                        mathEvalHEX%% = NOT mathEvalHEX%%
+                                        IF mathEvalHEX%% THEN ev$ = "&H" + HEX$(VAL(ev$)) ELSE ev$ = ev0$
+                                    CASE 3
+                                        mathEvalComment%% = NOT mathEvalComment%%
+                                END SELECT
+                            ELSE
+                                EXIT DO
+                            END IF
+                        LOOP
+                        IF mathEvalError%% AND result = 2 THEN EXIT DO
+                        IF mathEvalError%% = 0 AND (result = 1 OR result = 5) THEN EXIT DO
+                    ELSE
+                        EXIT DO
+                    END IF
+                LOOP
+
+                IF mathEvalError%% = 0 AND result = 1 THEN
+                    tempk$ = mathMsg$
+
+                    'insert
+                    IF ideselect THEN GOSUB delselect
+                    a$ = idegetline(idecy)
+                    IF LEN(a$) < idecx - 1 THEN a$ = a$ + SPACE$(idecx - 1 - LEN(a$))
+                    a$ = LEFT$(a$, idecx - 1) + tempk$ + RIGHT$(a$, LEN(a$) - idecx + 1)
+                    idesetline idecy, a$
+
+                    IF PasteCursorAtEnd THEN
+                        'Place the cursor at the end of the inserted content:
+                        idecx = idecx + LEN(tempk$)
+                    END IF
+
+                    idechangemade = 1
+                END IF
                 PCOPY 3, 0: SCREEN , , 3, 0
                 GOTO ideloop
             END IF
 
-            IF menu$(m, s) = "Update All #Pages" THEN
+            IF menu$(m, s) = "Update All #Pages..." THEN
                 PCOPY 2, 0
-                q$ = ideyesnobox("Update Help", "Redownload all cached help content? (~10 min)")
+                q$ = ideyesnobox("Update Help", "This can take up to 10 minutes.\nRedownload all cached help content from the wiki?")
+                PCOPY 2, 0
+                IF q$ = "Y" THEN ideupdatehelpbox
                 PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
-                IF q$ = "Y" THEN
-
-                    IF idehelp = 0 THEN
-                        old_idesubwindow = idesubwindow: old_idewy = idewy
-                        idesubwindow = idewy \ 2: idewy = idewy - idesubwindow
-                        Help_wx1 = 2: Help_wy1 = idewy + 1: Help_wx2 = idewx - 1: Help_wy2 = idewy + idesubwindow - 2: Help_ww = Help_wx2 - Help_wx1 + 1: Help_wh = Help_wy2 - Help_wy1 + 1
-                        idesubwindow = old_idesubwindow: idewy = old_idewy
-                    END IF
-
-                    SCREEN , , 4, 4
-                    COLOR 7, 1
-                    CLS
-
-                    PRINT "Generating list of cached content..."
-
-                    'Create a list of all files to be recached
-                    f$ = CHR$(0) + idezfilelist$("internal/help", 1, "") + CHR$(0)
-                    IF LEN(f$) = 2 THEN f$ = CHR$(0)
-
-                    'Prepend core pages to list
-                    f$ = CHR$(0) + "Keyword_Reference_-_By_usage.txt" + f$
-                    f$ = CHR$(0) + "QB64_Help_Menu.txt" + f$
-                    f$ = CHR$(0) + "QB64_FAQ.txt" + f$
-                    PRINT "Adding core help pages added to list..."
-
-                    'Download and PARSE alphabetical index to build required F1 help links
-                    PRINT "Regenerating keyword list..."
-                    Help_Recaching = 1: Help_IgnoreCache = 1
-                    a$ = Wiki$("Keyword Reference - Alphabetical")
-                    Help_Recaching = 0: Help_IgnoreCache = 0
-                    WikiParse a$
-
-                    'Add all linked pages to download list (if not already in list)
-                    fh = FREEFILE
-                    OPEN "internal\help\links.bin" FOR INPUT AS #fh
-                    DO UNTIL EOF(fh)
-                        LINE INPUT #fh, l$
-                        IF LEN(l$) THEN
-                            c = INSTR(l$, ","): PageName2$ = RIGHT$(l$, LEN(l$) - c)
-                            DO WHILE INSTR(PageName2$, " ")
-                                ASC(PageName2$, INSTR(PageName2$, " ")) = 95
-                            LOOP
-                            DO WHILE INSTR(PageName2$, "&")
-                                i = INSTR(PageName2$, "&")
-                                PageName2$ = LEFT$(PageName2$, i - 1) + "%26" + RIGHT$(PageName2$, LEN(PageName2$) - i)
-                            LOOP
-                            DO WHILE INSTR(PageName2$, "/")
-                                i = INSTR(PageName2$, "/")
-                                PageName2$ = LEFT$(PageName2$, i - 1) + "%2F" + RIGHT$(PageName2$, LEN(PageName2$) - i)
-                            LOOP
-                            PageName2$ = PageName2$ + ".txt"
-                            IF INSTR(f$, CHR$(0) + PageName2$ + CHR$(0)) = 0 THEN
-                                f$ = f$ + PageName2$ + CHR$(0)
-                            END IF
-                        END IF
-                    LOOP
-                    CLOSE #fh
-
-                    'Redownload all listed files
-                    IF f$ <> CHR$(0) THEN
-                        c = 0 'count files to download
-                        FOR x = 2 TO LEN(f$)
-                            IF ASC(f$, x) = 0 THEN c = c + 1
-                        NEXT
-                        c = c - 1
-                        PRINT "Updating"; c; "help content files: (Press ESC to cancel)"
-
-                        f$ = RIGHT$(f$, LEN(f$) - 1)
-                        z$ = CHR$(0)
-                        n = 0
-                        DO UNTIL LEN(f$) = 0
-                            x2 = INSTR(f$, z$)
-                            f2$ = LEFT$(f$, x2 - 1): f$ = RIGHT$(f$, LEN(f$) - x2)
-
-                            IF RIGHT$(f2$, 4) = ".txt" THEN
-                                f2$ = LEFT$(f2$, LEN(f2$) - 4)
-                                n = n + 1
-                                PRINT "(" + str2$(n) + "/" + str2$(c) + ") " + f2$
-
-                                Help_IgnoreCache = 1: Help_Recaching = 1: ignore$ = Wiki(f2$): Help_Recaching = 0: Help_IgnoreCache = 0
-                            END IF
-
-                            GetInput
-                            DO WHILE iCHANGED
-                                IF K$ = CHR$(27) THEN GOTO stoprecache
-                                GetInput
-                            LOOP
-                        LOOP
-                    END IF
-                    stoprecache:
-                    PCOPY 3, 0: SCREEN , , 3, 0: idewait4mous: idewait4alt
-                END IF
                 GOTO ideloop
             END IF
 
@@ -7650,7 +7680,7 @@ FUNCTION idefiledialog$(programname$, mode AS _BYTE)
     o(i).typ = 4 'check box
     o(i).x = 37
     o(i).y = idewy + idesubwindow - 9
-    o(i).nam = idenewtxt(".BAS Only")
+    o(i).nam = idenewtxt(".#BAS Only")
     IF AllFiles THEN o(i).sel = 0 ELSE o(i).sel = 1
     prevBASOnly = o(i).sel
     i = i + 1
@@ -8358,7 +8388,7 @@ SUB ideshowtext
 
             FOR m = 1 TO LEN(a2$) 'print to the screen while checking required color changes
                 IF timeElapsedSince(startTime) > 1 THEN
-                    result = idemessagebox("Syntax Highlighter Disabled", StrReplace$("Syntax Highlighter has been disabled to avoid locking up the IDE.\nThis may have been caused by lines that are too long.\nYou can reenable the Highlighter in the 'Options' menu.", "\n", CHR$(10)), "")
+                    result = idemessagebox("Syntax Highlighter Disabled", "Syntax Highlighter has been disabled to avoid locking up the IDE.\nThis may have been caused by lines that are too long.\nYou can reenable the Highlighter in the 'Options' menu.", "")
                     DisableSyntaxHighlighter = -1
                     WriteConfigSetting "'[GENERAL SETTINGS]", "DisableSyntaxHighlighter", "TRUE"
                     menu$(OptionsMenuID, OptionsMenuDisableSyntax) = CHR$(7) + "Disable Syntax #Highlighter"
@@ -10260,8 +10290,10 @@ FUNCTION idezpathlist$ (path$)
         END IF
         'add drive paths
         FOR i = 0 TO 25
-            IF LEN(pathlist$) THEN pathlist$ = pathlist$ + sep
-            pathlist$ = pathlist$ + CHR$(65 + i) + ":"
+            IF RIGHT$(pathlist$, 1) <> sep AND LEN(pathlist$) > 0 THEN pathlist$ = pathlist$ + sep
+            IF _DIREXISTS(CHR$(65 + i) + ":\") THEN
+                pathlist$ = pathlist$ + CHR$(65 + i) + ":"
+            END IF
         NEXT
         idezpathlist$ = pathlist$
         EXIT FUNCTION
@@ -10940,6 +10972,7 @@ FUNCTION idemessagebox (titlestr$, messagestr$, buttons$)
     '-------- end of generic dialog box header --------
 
     '-------- init --------
+    messagestr$ = StrReplace$(messagestr$, "\n", CHR$(10))
     MessageLines = 1
     DIM FullMessage$(1 TO 8)
     PrevScan = 1
@@ -10960,15 +10993,23 @@ FUNCTION idemessagebox (titlestr$, messagestr$, buttons$)
         END IF
     LOOP
 
+    IF buttons$ = "" THEN buttons$ = "#OK"
+    totalButtons = 1
+    FOR i = 1 TO LEN(buttons$)
+        IF ASC(buttons$, i) = 59 THEN totalButtons = totalButtons + 1
+    NEXT
+    buttonsLen = LEN(buttons$) + totalButtons * 6
+
     i = 0
     w2 = LEN(titlestr$) + 4
     IF w < w2 THEN w = w2
+    IF w < buttonsLen THEN w = buttonsLen
+    IF w > idewx - 4 THEN w = idewx - 4
     idepar p, w, 3 + MessageLines, titlestr$
 
     i = i + 1
     o(i).typ = 3
     o(i).y = 3 + MessageLines
-    IF buttons$ = "" THEN buttons$ = "#OK"
     o(i).txt = idenewtxt(StrReplace$(buttons$, ";", sep))
     o(i).dft = 1
     '-------- end of init --------
@@ -10999,6 +11040,9 @@ FUNCTION idemessagebox (titlestr$, messagestr$, buttons$)
         '-------- custom display changes --------
         COLOR 0, 7
         FOR i = 1 TO MessageLines
+            IF LEN(FullMessage$(i)) > p.w - 2 THEN
+                FullMessage$(i) = LEFT$(FullMessage$(i), p.w - 5) + STRING$(3, 250)
+            END IF
             LOCATE p.y + 1 + i, p.x + (w \ 2 - LEN(FullMessage$(i)) \ 2) + 1
             PRINT FullMessage$(i);
         NEXT i
@@ -11514,7 +11558,7 @@ FUNCTION idechoosecolorsbox
     i = i + 1
     o(i).typ = 4 'check box
     o(i).y = 17
-    o(i).nam = idenewtxt("#Keyword highlight")
+    o(i).nam = idenewtxt("Highlight #keywords and numbers")
     IF keywordHighlight THEN o(i).sel = 1
 
     i = i + 1
@@ -11744,7 +11788,7 @@ FUNCTION idechoosecolorsbox
         END IF
 
         'Save and Erase color scheme (Buttons):
-        IF (SchemeID = 0 OR SchemeID > PresetColorSchemes) AND mB THEN
+        IF (SchemeID = 0 OR SchemeID > PresetColorSchemes) AND mCLICK THEN
             IF mY = p.y + 2 AND mX >= p.x + 60 AND mX <= p.x + 65 THEN
                 'Save
                 IF SchemeID = 0 THEN
@@ -11849,7 +11893,7 @@ FUNCTION idechoosecolorsbox
         'Scheme selection arrows:
         ChangedScheme = 0
         SchemeArrow = 0
-        IF (mB AND mY = p.y + 2 AND mX >= p.x + 2 AND mX <= p.x + 4) OR _
+        IF (mCLICK AND mY = p.y + 2 AND mX >= p.x + 2 AND mX <= p.x + 4) OR _
            (K$ = CHR$(0) + CHR$(75) AND (focus = 1)) THEN
             SchemeArrow = -1
             IF SchemeID = 0 THEN
@@ -11858,7 +11902,7 @@ FUNCTION idechoosecolorsbox
             ELSE
                 IF SchemeID > 1 THEN SchemeID = SchemeID - 1: ChangedScheme = -1
             END IF
-        ELSEIF (mB AND mY = p.y + 2 AND mX >= p.x + 5 AND mX <= p.x + 7) OR _
+        ELSEIF (mCLICK AND mY = p.y + 2 AND mX >= p.x + 5 AND mX <= p.x + 7) OR _
                (K$ = CHR$(0) + CHR$(77) AND (focus = 1)) THEN
             SchemeArrow = 1
             IF SchemeID = 0 THEN
@@ -11915,13 +11959,16 @@ FUNCTION idechoosecolorsbox
             IDEBackgroundColor2 = _RGB32(VAL(r$), VAL(g$), VAL(b$))
             r$ = MID$(ColorData$, i, 3): i = i + 3: g$ = MID$(ColorData$, i, 3): i = i + 3: b$ = MID$(ColorData$, i, 3): i = i + 3
             IDEBracketHighlightColor = _RGB32(VAL(r$), VAL(g$), VAL(b$))
-            _DELAY .2
             GOTO ChangeTextBoxes
         END IF
 
         IF mB AND mY = p.y + 5 AND mX >= p.x + 39 AND mX <= p.x + 39 + 26 THEN
             newValue = (mX - p.x - 39) * (255 / 26)
             idetxt(o(2).txt) = str2$(newValue)
+            IF _KEYDOWN(100305) OR _KEYDOWN(100306) THEN
+                idetxt(o(3).txt) = str2$(newValue)
+                idetxt(o(4).txt) = str2$(newValue)
+            END IF
             focus = 2
             o(focus).v1 = LEN(idetxt(o(focus).txt))
             o(focus).issel = -1
@@ -11932,6 +11979,10 @@ FUNCTION idechoosecolorsbox
         IF mB AND mY = p.y + 8 AND mX >= p.x + 39 AND mX <= p.x + 39 + 26 THEN
             newValue = (mX - p.x - 39) * (255 / 26)
             idetxt(o(3).txt) = str2$(newValue)
+            IF _KEYDOWN(100305) OR _KEYDOWN(100306) THEN
+                idetxt(o(2).txt) = str2$(newValue)
+                idetxt(o(4).txt) = str2$(newValue)
+            END IF
             focus = 3
             o(focus).v1 = LEN(idetxt(o(focus).txt))
             o(focus).issel = -1
@@ -11942,6 +11993,10 @@ FUNCTION idechoosecolorsbox
         IF mB AND mY = p.y + 11 AND mX >= p.x + 39 AND mX <= p.x + 39 + 26 THEN
             newValue = (mX - p.x - 39) * (255 / 26)
             idetxt(o(4).txt) = str2$(newValue)
+            IF _KEYDOWN(100305) OR _KEYDOWN(100306) THEN
+                idetxt(o(2).txt) = str2$(newValue)
+                idetxt(o(3).txt) = str2$(newValue)
+            END IF
             focus = 4
             o(focus).v1 = LEN(idetxt(o(focus).txt))
             o(focus).issel = -1
@@ -12068,7 +12123,6 @@ FUNCTION idechoosecolorsbox
             FoundPipe = INSTR(ColorSchemes$(SchemeID), "|")
             idetxt(o(9).txt) = LEFT$(ColorSchemes$(SchemeID), FoundPipe - 1)
             info = 0
-            IF ChangedScheme THEN _DELAY .2
             GOTO ApplyScheme
         END IF
 
@@ -12167,7 +12221,7 @@ FUNCTION idechoosecolorsbox
 END FUNCTION
 
 
-FUNCTION idecolorpicker$ (editing)
+FUNCTION idergbmixer$ (editing)
     '-------- generic dialog box header --------
     PCOPY 0, 2
     PCOPY 0, 1
@@ -12604,8 +12658,14 @@ FUNCTION idecolorpicker$ (editing)
         END IF
 
         IF (focus = 5 AND info <> 0) THEN
+            'Return the current RGB string
+            IF (idetxt(o(1).txt) = idetxt(o(2).txt) AND idetxt(o(2).txt) = idetxt(o(3).txt)) THEN
+                CurrentRGB$ = "_RGB32(" + idetxt(o(1).txt) + ")"
+            ELSE
+                CurrentRGB$ = "_RGB32(" + idetxt(o(1).txt) + ", " + idetxt(o(2).txt) + ", " + idetxt(o(3).txt) + ")"
+            END IF
+
             _CLIPBOARD$ = CurrentRGB$
-            idecolorpicker$ = CurrentRGB$
             ideselect = prev.ideselect
             EXIT FUNCTION
         END IF
@@ -12639,49 +12699,20 @@ FUNCTION idecolorpicker$ (editing)
                     idecx = ideselectx1 + LEN(CurrentRGB$)
                     ideselecty1 = idecy
                     prev.ideselect = 1
-                ELSE
-                    detail$ = "no _RGB statement found"
-                    IF ideselect AND ideselecty1 <> idecy THEN
-                        detail$ = "can't insert - multiple lines"
-                    END IF
-                    _CLIPBOARD$ = CurrentRGB$
-                    result = idemessagebox("RGB Color Mixer", "Copied to the clipboard (" + detail$ + ").", "#OK")
-                END IF
-            ELSE
-                IF ideselect THEN
-                    IF ideselecty1 <> idecy THEN
-                        _CLIPBOARD$ = CurrentRGB$
-                        result = idemessagebox("RGB Color Mixer", "Copied to the clipboard (can't insert - multiple lines).", "#OK")
-                    ELSE
-                        'Delete selection and insert current RGB values
-                        sx1 = ideselectx1: sx2 = idecx
-                        IF sx1 > sx2 THEN SWAP sx1, sx2
-                        NewLine$ = LEFT$(CurrentLine$, sx1 - 1)
-                        NewLine$ = NewLine$ + CurrentRGB$
-                        NewLine$ = NewLine$ + MID$(CurrentLine$, sx2)
-                        idechangemade = 1
-                        idesetline idecy, NewLine$
-
-                        'Select the inserted bit
-                        ideselectx1 = sx1
-                        idecx = ideselectx1 + LEN(CurrentRGB$)
-                        ideselecty1 = idecy
-                        prev.ideselect = 1
-                    END IF
-                ELSE
-                    'Insert current RGB values at the cursor
-                    NewLine$ = LEFT$(CurrentLine$, idecx - 1)
-                    NewLine$ = NewLine$ + CurrentRGB$
-                    NewLine$ = NewLine$ + MID$(CurrentLine$, idecx)
-                    idechangemade = 1
-                    idesetline idecy, NewLine$
-
-                    idecx = idecx + LEN(CurrentRGB$)
-                    prev.ideselect = 0
+                    CurrentRGB$ = "" 'return nothing since we've already inserted it above
                 END IF
             END IF
-            'Return the current RGB string
-            idecolorpicker$ = CurrentRGB$
+
+            IF LEN(CurrentRGB$) THEN
+                'Return the current RGB string
+                IF (idetxt(o(1).txt) = idetxt(o(2).txt) AND idetxt(o(2).txt) = idetxt(o(3).txt)) THEN
+                    CurrentRGB$ = "_RGB32(" + idetxt(o(1).txt) + ")"
+                ELSE
+                    CurrentRGB$ = "_RGB32(" + idetxt(o(1).txt) + ", " + idetxt(o(2).txt) + ", " + idetxt(o(3).txt) + ")"
+                END IF
+            END IF
+
+            idergbmixer$ = CurrentRGB$
             ideselect = prev.ideselect
             EXIT FUNCTION
         END IF
@@ -13538,12 +13569,12 @@ SUB IdeMakeContextualMenu
         END IF
 
         Found_RGB = 0
-        Found_RGB = Found_RGB + INSTR(UCASE$(a$), "_RGB(")
-        Found_RGB = Found_RGB + INSTR(UCASE$(a$), "_RGB32(")
-        Found_RGB = Found_RGB + INSTR(UCASE$(a$), "_RGBA(")
-        Found_RGB = Found_RGB + INSTR(UCASE$(a$), "_RGBA32(")
+        Found_RGB = Found_RGB + INSTR(UCASE$(a$), "RGB(")
+        Found_RGB = Found_RGB + INSTR(UCASE$(a$), "RGB32(")
+        Found_RGB = Found_RGB + INSTR(UCASE$(a$), "RGBA(")
+        Found_RGB = Found_RGB + INSTR(UCASE$(a$), "RGBA32(")
         IF Found_RGB THEN
-            menu$(m, i) = "Open _RGB Color Mi#xer": i = i + 1
+            menu$(m, i) = "#RGB Color Mixer...": i = i + 1
             menu$(m, i) = "-": i = i + 1
         END IF
         NoRGBFound:
@@ -13598,6 +13629,13 @@ SUB IdeMakeContextualMenu
             menu$(m, i) = "#Copy  Ctrl+Ins or Ctrl+C": i = i + 1
         END IF
         menu$(m, i) = "Select #All  Ctrl+A": i = i + 1
+        menu$(m, i) = "-": i = i + 1
+        menu$(m, i) = "#Contents Page": i = i + 1
+        menu$(m, i) = "Keyword #Index": i = i + 1
+        menu$(m, i) = "#Keywords by Usage": i = i + 1
+        menu$(m, i) = "-": i = i + 1
+        menu$(m, i) = "#Update Current Page": i = i + 1
+        menu$(m, i) = "Update All #Pages...": i = i + 1
         menu$(m, i) = "-": i = i + 1
         menu$(m, i) = "Clo#se Help  ESC": i = i + 1
     END IF
@@ -13730,130 +13768,516 @@ SUB IdeAddSearched (s2$)
     CLOSE #fh
 END SUB
 
-FUNCTION ideASCIIbox%
-    'IF INSTR(_OS$, "WIN") THEN ret% = SHELL("internal\ASCII-Picker.exe") ELSE ret% = SHELL("internal/ASCII-Picker")
-    '(code to fix font and arrow keys also written by Steve)
-    w = _WIDTH: h = _HEIGHT
-    font = _FONT
-    temp = _NEWIMAGE(640, 480, 32)
-    temp1 = _NEWIMAGE(640, 480, 32)
-    ws = _NEWIMAGE(640, 480, 32)
-    SCREEN temp
-    CLS , _RGB(0, 0, 170)
-    COLOR , _RGB(0, 0, 170)
-    FOR y = 1 TO 16
-        FOR x = 1 TO 16
-            LINE (x * 40, 0)-(x * 40, 480), _RGB32(255, 255, 0)
-            LINE (0, y * 30)-(640, y * 30), _RGB32(255, 255, 0)
-            IF counter THEN _PRINTSTRING (x * 40 - 28, y * 30 - 23), CHR$(counter)
-            counter = counter + 1
-        NEXT
-    NEXT
+SUB ideupdatehelpbox
+    '-------- generic dialog box header --------
+    PCOPY 0, 2
+    PCOPY 0, 1
+    SCREEN , , 1, 0
+    focus = 1
+    DIM p AS idedbptype
+    DIM o(1 TO 100) AS idedbotype
+    DIM sep AS STRING * 1
+    sep = CHR$(0)
+    '-------- end of generic dialog box header --------
 
-    _DEST temp1
-    CLS , _RGB(0, 0, 170)
-    COLOR , _RGB(0, 0, 170)
-    counter = 0
-    FOR y = 1 TO 16
-        FOR x = 1 TO 16
-            LINE (x * 40, 0)-(x * 40, 480), _RGB32(255, 255, 0)
-            LINE (0, y * 30)-(640, y * 30), _RGB32(255, 255, 0)
-            text$ = LTRIM$(STR$(counter))
-            IF counter THEN _PRINTSTRING (x * 40 - 24 - (LEN(text$)) * 4, y * 30 - 23), text$
-            counter = counter + 1
-        NEXT
-    NEXT
-    _DEST temp
-
-    x = 1: y = 1
-    _PUTIMAGE , temp, ws
-    DO: LOOP WHILE _MOUSEINPUT 'clear the mouse input buffer
-    oldmousex = _MOUSEX: oldmousey = _MOUSEY
-
-    DO
-        _LIMIT 60
-        DO: LOOP WHILE _MOUSEINPUT
-        IF oldx <> _MOUSEX AND oldy <> _MOUSEY THEN
-            x = _MOUSEX \ 40 + 1 'If mouse moved, where are we now?
-            y = _MOUSEY \ 30 + 1
-        END IF
-        oldx = _MOUSEX: oldy = _MOUSEY
-
-        num = (y - 1) * 16 + x - 1
-        IF num = 0 THEN
-            text$ = ""
-        ELSE
-            flashcounter = flashcounter + 1
-            IF flashcounter > 30 THEN
-                COLOR _RGB32(255, 255, 255), _RGB(0, 0, 170)
-                text$ = CHR$(num)
-                IF LEN(text$) = 1 THEN text$ = " " + text$ + " "
-            ELSE
-                COLOR _RGB32(255, 255, 255), _RGB(0, 0, 170)
-                text$ = RTRIM$(LTRIM$(STR$(num)))
-            END IF
-        END IF
-        IF flashcounter = 60 THEN flashcounter = 1
-        CLS
-        IF toggle THEN _PUTIMAGE , temp1, temp ELSE _PUTIMAGE , ws, temp
-        _PRINTSTRING (x * 40 - 24 - (LEN(text$)) * 4, y * 30 - 23), text$
-        LINE (x * 40 - 40, y * 30 - 30)-(x * 40, y * 30), _RGBA32(255, 255, 255, 150), BF
-
-        k1 = _KEYHIT
-        MouseClick = 0: MouseExit = 0
-        IF MouseButtonSwapped THEN
-            MouseClick = _MOUSEBUTTON(2): MouseExit = _MOUSEBUTTON(1)
-        ELSE
-            MouseClick = _MOUSEBUTTON(1): MouseExit = _MOUSEBUTTON(2)
-        END IF
-        SELECT CASE k1
-            CASE 13: EXIT DO
-            CASE 27
-                _AUTODISPLAY
-                SCREEN 0: WIDTH w, h: _FONT font: _DEST 0: _DELAY .2
-                IF _RESIZE THEN donothing = atall
-                EXIT SUB
-            CASE 32: toggle = NOT toggle
-            CASE 18432: y = y - 1
-            CASE 19200: x = x - 1
-            CASE 20480: y = y + 1
-            CASE 19712: x = x + 1
-        END SELECT
-
-        IF x < 1 THEN x = 1
-        IF x > 16 THEN x = 16
-        IF y < 1 THEN y = 1
-        IF y > 16 THEN y = 16
-        _DISPLAY
-        Ex = _EXIT
-        IF Ex THEN
-            _AUTODISPLAY
-            SCREEN 0: WIDTH w, h: _FONT font: _DEST 0: _DELAY .2
-            IF _RESIZE THEN donothing = atall
-            EXIT FUNCTION
-        END IF
-        IF MouseExit THEN
-            _AUTODISPLAY
-            SCREEN 0: WIDTH w, h: _FONT font: _DEST 0: _DELAY .2
-            IF _RESIZE THEN donothing = atall
-            DO UNTIL _MOUSEBUTTON(1) = 0 AND _MOUSEBUTTON(2) = 0: i = _MOUSEINPUT: LOOP
-            EXIT FUNCTION
-        END IF
-
-    LOOP UNTIL MouseClick
-
-    ret% = (y - 1) * 16 + x - 1
-    IF ret% > 0 AND ret% < 255 THEN
-        ideASCIIbox% = ret%
+    '-------- init --------
+    IF idehelp = 0 THEN
+        old_idesubwindow = idesubwindow: old_idewy = idewy
+        idesubwindow = idewy \ 2: idewy = idewy - idesubwindow
+        Help_wx1 = 2: Help_wy1 = idewy + 1: Help_wx2 = idewx - 1: Help_wy2 = idewy + idesubwindow - 2: Help_ww = Help_wx2 - Help_wx1 + 1: Help_wh = Help_wy2 - Help_wy1 + 1
+        idesubwindow = old_idesubwindow: idewy = old_idewy
     END IF
 
-    _AUTODISPLAY
+    MessageLines = 2
+    DIM FullMessage$(1 TO 2)
+    UpdateStep = 1
 
-    SCREEN 0: WIDTH w, h
-    _FONT font
-    _DEST 0: _DELAY .2
-    IF _RESIZE THEN REM
-    DO UNTIL _MOUSEBUTTON(1) = 0 AND _MOUSEBUTTON(2) = 0: i = _MOUSEINPUT: LOOP
+    i = 0
+    w2 = LEN(titlestr$) + 4
+    IF w < w2 THEN w = w2
+    IF w < buttonsLen THEN w = buttonsLen
+    IF w > idewx - 4 THEN w = idewx - 4
+    idepar p, 60, 6, "Update Help"
+
+    i = i + 1
+    ButtonID = i
+    o(i).typ = 3
+    o(i).y = 6
+    o(i).txt = idenewtxt("#Cancel")
+    o(i).dft = 1
+    '-------- end of init --------
+
+    '-------- generic init --------
+    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
+    '-------- end of generic init --------
+
+    DO 'main loop
+
+
+        '-------- generic display dialog box & objects --------
+        idedrawpar p
+        f = 1: cx = 0: cy = 0
+        FOR i = 1 TO 100
+            IF o(i).typ THEN
+
+                'prepare object
+                o(i).foc = focus - f 'focus offset
+                o(i).cx = 0: o(i).cy = 0
+                idedrawobj o(i), f 'display object
+                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
+            END IF
+        NEXT i
+        lastfocus = f - 1
+        '-------- end of generic display dialog box & objects --------
+
+        '-------- custom display changes --------
+        'update steps
+        SELECT CASE UpdateStep
+            CASE 1
+                FullMessage$(2) = "Generating list of cached content..."
+            CASE 2
+                FullMessage$(2) = "Adding core help pages to list..."
+            CASE 3
+                FullMessage$(2) = "Regenerating keyword list..."
+            CASE 4
+                FullMessage$(2) = "Building download queue..."
+            CASE 5
+                FullMessage$(1) = "Updating help content file " + str2$(n) + "/" + str2$(c) +"..."
+        END SELECT
+
+        FOR i = 1 TO MessageLines
+            IF i = 1 THEN COLOR 0, 7 ELSE COLOR 2, 7
+            IF LEN(FullMessage$(i)) > p.w - 2 THEN
+                FullMessage$(i) = LEFT$(FullMessage$(i), p.w - 5) + STRING$(3, 250)
+            END IF
+            LOCATE p.y + 1 + i, p.x + (p.w \ 2 - LEN(FullMessage$(i)) \ 2) + 1
+            PRINT FullMessage$(i);
+        NEXT i
+
+        COLOR 0, 7
+        IF UpdateStep = 5 THEN
+            maxprogresswidth = 52 'arbitrary
+            percentage = INT(n / c * 100)
+            percentagechars = INT(maxprogresswidth * n / c)
+            'percentageMsg$ = "[" + STRING$(percentagechars, 254) + SPACE$(maxprogresswidth - percentagechars) + "]" + STR$(percentage) + "%"
+            percentageMsg$ = STRING$(percentagechars, 219) + STRING$(maxprogresswidth - percentagechars, 176) + STR$(percentage) + "%"
+            LOCATE p.y + 4, p.x + (p.w \ 2 - LEN(percentageMsg$) \ 2) + 1
+            PRINT percentageMsg$;
+        ELSEIF UpdateStep = 6 THEN
+            percentageMsg$ = STRING$(maxprogresswidth, 219) + " 100%"
+            LOCATE p.y + 4, p.x + (p.w \ 2 - LEN(percentageMsg$) \ 2) + 1
+            PRINT percentageMsg$;
+        END IF
+        '-------- end of custom display changes --------
+
+        'update visual page and cursor position
+        PCOPY 1, 0
+        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
+
+        '-------- read input --------
+        GetInput
+        IF mCLICK THEN mousedown = 1
+        IF mRELEASE THEN mouseup = 1
+        alt = KALT
+        oldalt = alt
+
+        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
+        'convert "alt+letter" scancode to letter's ASCII character
+        altletter$ = ""
+        IF alt AND NOT KCTRL THEN
+            IF LEN(K$) = 1 THEN
+                k = ASC(UCASE$(K$))
+                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
+            END IF
+        END IF
+        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
+        '-------- end of read input --------
+
+        '-------- generic input response --------
+        info = 0
+
+        IF UCASE$(K$) = "C" THEN altletter$ = UCASE$(K$)
+
+        IF K$ = "" THEN K$ = CHR$(255)
+        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
+        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
+        IF focus < 1 THEN focus = lastfocus
+        IF focus > lastfocus THEN focus = 1
+        f = 1
+        FOR i = 1 TO 100
+            t = o(i).typ
+            IF t THEN
+                focusoffset = focus - f
+                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
+            END IF
+        NEXT
+        '-------- end of generic input response --------
+
+        'specific post controls
+        IF K$ = CHR$(27) OR K$ = CHR$(13) OR (info <> 0) THEN
+            IF UpdateStep < 6 THEN q$ = ideyesnobox("", "Cancel download?") ELSE q$ = "Y"
+            IF q$ = "Y" THEN EXIT FUNCTION
+        END IF
+        'end of custom controls
+
+        '-------- update routine -------------------------------------
+        SELECT CASE UpdateStep
+            CASE 1
+                'Create a list of all files to be recached
+                f$ = CHR$(0) + idezfilelist$("internal/help", 1, "") + CHR$(0)
+                IF LEN(f$) = 2 THEN f$ = CHR$(0)
+
+                'Prepend core pages to list
+                f$ = CHR$(0) + "Keyword_Reference_-_By_usage.txt" + f$
+                f$ = CHR$(0) + "QB64_Help_Menu.txt" + f$
+                f$ = CHR$(0) + "QB64_FAQ.txt" + f$
+                UpdateStep = UpdateStep + 1
+            CASE 2
+                UpdateStep = UpdateStep + 1
+            CASE 3
+                'Download and PARSE alphabetical index to build required F1 help links
+                FullMessage$(1) = "Regenerating keyword list..."
+                Help_Recaching = 1: Help_IgnoreCache = 1
+                a$ = Wiki$("Keyword Reference - Alphabetical")
+                Help_Recaching = 0: Help_IgnoreCache = 0
+                WikiParse a$
+                UpdateStep = UpdateStep + 1
+            CASE 4
+                'Add all linked pages to download list (if not already in list)
+                fh = FREEFILE
+                OPEN "internal\help\links.bin" FOR INPUT AS #fh
+                DO UNTIL EOF(fh)
+                    LINE INPUT #fh, l$
+                    IF LEN(l$) THEN
+                        c = INSTR(l$, ","): PageName2$ = RIGHT$(l$, LEN(l$) - c)
+                        DO WHILE INSTR(PageName2$, " ")
+                            ASC(PageName2$, INSTR(PageName2$, " ")) = 95
+                        LOOP
+                        DO WHILE INSTR(PageName2$, "&")
+                            i = INSTR(PageName2$, "&")
+                            PageName2$ = LEFT$(PageName2$, i - 1) + "%26" + RIGHT$(PageName2$, LEN(PageName2$) - i)
+                        LOOP
+                        DO WHILE INSTR(PageName2$, "/")
+                            i = INSTR(PageName2$, "/")
+                            PageName2$ = LEFT$(PageName2$, i - 1) + "%2F" + RIGHT$(PageName2$, LEN(PageName2$) - i)
+                        LOOP
+                        PageName2$ = PageName2$ + ".txt"
+                        IF INSTR(f$, CHR$(0) + PageName2$ + CHR$(0)) = 0 THEN
+                            f$ = f$ + PageName2$ + CHR$(0)
+                        END IF
+                    END IF
+                LOOP
+                CLOSE #fh
+
+                'Redownload all listed files
+                IF f$ <> CHR$(0) THEN
+                    c = 0 'count files to download
+                    FOR x = 2 TO LEN(f$)
+                        IF ASC(f$, x) = 0 THEN c = c + 1
+                    NEXT
+                    c = c - 1
+
+                    f$ = RIGHT$(f$, LEN(f$) - 1)
+                    z$ = CHR$(0)
+                    n = 0
+                ELSE
+                    GOTO stoprecache
+                END IF
+                FullMessage$(2) = ""
+                UpdateStep = UpdateStep + 1
+            CASE 5
+                IF LEN(f$) > 0 THEN
+                    x2 = INSTR(f$, z$)
+                    f2$ = LEFT$(f$, x2 - 1): f$ = RIGHT$(f$, LEN(f$) - x2)
+
+                    IF RIGHT$(f2$, 4) = ".txt" THEN
+                        f2$ = LEFT$(f2$, LEN(f2$) - 4)
+                        n = n + 1
+                        FullMessage$(2) = "Page title: " + f2$
+                        Help_IgnoreCache = 1: Help_Recaching = 1: ignore$ = Wiki(f2$): Help_Recaching = 0: Help_IgnoreCache = 0
+                    END IF
+                ELSE
+                    UpdateStep = UpdateStep + 1
+                END IF
+            CASE 6
+                stoprecache:
+                FullMessage$(1) = "All pages updated."
+                FullMessage$(2) = ""
+                idetxt(o(ButtonID).txt) = "#Close"
+        END SELECT
+        '-------- end of update routine ------------------------------
+
+        mousedown = 0
+        mouseup = 0
+    LOOP
+END SUB
+
+FUNCTION ideASCIIbox$(relaunch)
+
+    '-------- generic dialog box header --------
+    PCOPY 0, 2
+    PCOPY 0, 1
+    SCREEN , , 1, 0
+    focus = 1
+    DIM p AS idedbptype
+    DIM o(1 TO 100) AS idedbotype
+    DIM sep AS STRING * 1
+    sep = CHR$(0)
+    '-------- end of generic dialog box header --------
+
+    '-------- init --------
+    i = 0
+    relaunch = 0
+    idepar p, 56, 21, "ASCII Chart"
+
+    i = i + 1
+    o(i).typ = 1 'hidden text box to give focus to the chart
+    o(i).y = 3
+    o(i).x = 5
+    o(i).w = 5
+
+    TYPE position
+        x AS INTEGER
+        y AS INTEGER
+        caption AS STRING
+    END TYPE
+    DIM asciiTable(1 TO 255) AS position
+
+    a = 0
+    x = 5
+    y = 2
+    FOR i = 0 TO 15
+        FOR j = 0 TO 15
+            a = a + 1
+            IF a > 255 THEN EXIT FOR
+            asciiTable(a).x = p.x + x
+            asciiTable(a).y = p.y + y
+            asciiTable(a).caption = " " + CHR$(a) + " "
+            x = x + 3
+        NEXT
+        IF a > 255 THEN EXIT FOR
+        x = 5
+        y = y + 1
+    NEXT
+
+    i = i + 1
+    o(i).typ = 3
+    o(i).y = 21
+    o(i).txt = idenewtxt("#Insert character" + sep + "Insert C#HR$" + sep + "#Close")
+    o(i).dft = 1
+
+    Selected = 1
+
+    '-------- end of init --------
+
+    '-------- generic init --------
+    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
+    '-------- end of generic init --------
+
+    DO 'main loop
+        '-------- generic display dialog box & objects --------
+        idedrawpar p
+        f = 1: cx = 0: cy = 0
+        FOR i = 1 TO 100
+            IF o(i).typ THEN
+                'prepare object
+                o(i).foc = focus - f 'focus offset
+                o(i).cx = 0: o(i).cy = 0
+                idedrawobj o(i), f 'display object
+                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
+            END IF
+        NEXT i
+        lastfocus = f - 1
+        '-------- end of generic display dialog box & objects --------
+
+        '-------- custom display changes --------
+        IF focus = 1 THEN
+            idebox p.x + 4, p.y + 1, 50, 18
+        END IF
+
+        Hover = 0
+        FOR i = 1 TO 255
+            IF mX >= asciiTable(i).x AND mX <= asciiTable(i).x + 2 AND mY = asciiTable(i).y THEN
+                IF mouseMoved THEN Hover = i: COLOR 7, 0
+                IF mCLICK THEN
+                    Selected = i
+                    focus = 1
+                    IF timeElapsedSince(lastClick!) <= .3 and lastClickOn = i THEN
+                        'double click on chart
+                        relaunch = -1
+                        GOTO insertChar
+                    END IF
+                    lastClick! = TIMER
+                    lastClickOn = i
+                END IF
+            ELSE
+                COLOR 2, 7
+            END IF
+            IF Selected = i THEN COLOR 15, 0
+            _PRINTSTRING (asciiTable(i).x, asciiTable(i).y), asciiTable(i).caption
+        NEXT
+
+        COLOR 0, 7
+        IF Selected > 0 THEN
+            _PRINTSTRING (p.x + 5, p.y + 19), "Selected:" + STR$(Selected)
+        END IF
+
+        COLOR 2, 7
+        IF Hover > 0 AND Hover <> Selected THEN
+            _PRINTSTRING (p.x + 5, p.y + 20), "Hovered: " + STR$(Hover)
+        END IF
+
+        '-------- end of custom display changes --------
+
+        'update visual page and cursor position
+        PCOPY 1, 0
+        IF cx THEN
+            SCREEN , , 0, 0
+            IF focus = 1 THEN
+                IF Selected THEN
+                    LOCATE asciiTable(Selected).y, asciiTable(Selected).x + 1, 1
+                END IF
+            ELSE
+                LOCATE cy, cx, 1
+            END IF
+            SCREEN , , 1, 0
+        END IF
+
+        '-------- read input --------
+        change = 0
+        mouseMoved = 0
+        DO
+            GetInput
+            IF mWHEEL THEN change = 1
+            IF KB THEN change = 1
+            IF mCLICK THEN mousedown = 1: change = 1
+            IF mRELEASE THEN mouseup = 1: change = 1
+            IF mB THEN change = 1
+            IF mX <> prev.mX OR mY <> prev.mY THEN change = 1: prev.mX = mX: prev.mY = mY: mouseMoved = -1
+            alt = KALT: IF alt <> oldalt THEN change = 1
+            oldalt = alt
+            _LIMIT 100
+        LOOP UNTIL change
+        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
+        'convert "alt+letter" scancode to letter's ASCII character
+        altletter$ = ""
+        IF alt AND NOT KCTRL THEN
+            IF LEN(K$) = 1 THEN
+                k = ASC(UCASE$(K$))
+                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
+            END IF
+        END IF
+        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
+        '-------- end of read input --------
+
+        '-------- generic input response --------
+        info = 0
+        IF K$ = "" THEN K$ = CHR$(255)
+        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
+        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
+        IF focus < 1 THEN focus = lastfocus
+        IF focus > lastfocus THEN focus = 1
+        f = 1
+        FOR i = 1 TO 100
+            t = o(i).typ
+            IF t THEN
+                focusoffset = focus - f
+                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
+            END IF
+        NEXT
+        '-------- end of generic input response --------
+
+        IF mY > p.y AND mY < p.y + p.h AND mX > p.x AND mX < p.x + p.w THEN
+            IF Hover = 0 AND mCLICK THEN focus = 1
+        END IF
+
+        IF (K$ = CHR$(13) AND focus = 1) THEN
+            ideASCIIbox$ = CHR$(Selected)
+            EXIT FUNCTION
+        END IF
+
+        IF focus = 2 AND (K$ = CHR$(13) OR info <> 0) THEN
+            insertChar:
+            ideASCIIbox$ = CHR$(Selected)
+            EXIT FUNCTION
+        END IF
+
+        IF (focus = 3 AND (info <> 0 OR K$ = CHR$(13))) THEN
+            ideASCIIbox$ = "CHR$(" + str2$(Selected) + ")"
+            EXIT FUNCTION
+        END IF
+
+        'Cancel:
+        IF (info <> 0 OR K$ = CHR$(13)) AND focus = 4 THEN EXIT FUNCTION
+
+        IF K$ = CHR$(27) THEN EXIT FUNCTION
+
+        IF focus = 1 THEN 'chart control (keyboard)
+            KCTRL = _KEYDOWN(100305) OR _KEYDOWN(100306)
+            SELECT CASE KB
+                CASE 18176: Selected = 1 'Home
+                CASE 20224: Selected = 255 'End
+                CASE 19712 'Right
+                    IF KCTRL AND Selected > 0 THEN
+                        DO UNTIL Selected MOD 16 = 0 OR Selected = 255
+                            Selected = Selected + 1
+                        LOOP
+                    ELSE
+                        Selected = Selected + 1
+                    END IF
+                    IF Selected > 255 THEN Selected = 1
+                CASE 19200 'Left
+                    IF KCTRL AND Selected > 0 THEN
+                        DO UNTIL Selected MOD 16 = 1
+                            Selected = Selected - 1
+                        LOOP
+                    ELSE
+                        Selected = Selected - 1
+                    END IF
+                    IF Selected < 1 THEN Selected = 255
+                CASE 20480 'Down
+                    IF KCTRL AND Selected > 0 THEN
+                        IF Selected = 240 THEN
+                            Selected = 255
+                        ELSE
+                            DO UNTIL Selected >= 240
+                                Selected = Selected + 16
+                            LOOP
+                        END IF
+                        IF Selected > 255 THEN Selected = 255
+                    ELSE
+                        IF Selected = 240 THEN
+                            'corner case
+                            Selected = 255
+                        ELSEIF Selected + 16 <= 255 THEN
+                            Selected = Selected + 16
+                        ELSE
+                            Selected = Selected + 16 - 256
+                        END IF
+                    END IF
+                CASE 18432 'Up
+                    IF KCTRL AND Selected > 0 THEN
+                        DO UNTIL Selected <= 16
+                            Selected = Selected - 16
+                        LOOP
+                        IF Selected < 1 THEN Selected = 1
+                    ELSE
+                        IF Selected = 16 THEN
+                            'corner case
+                            Selected = 240
+                        ELSEIF Selected - 16 >= 1 THEN
+                            Selected = Selected - 16
+                        ELSE
+                            Selected = Selected - 16 + 256
+                        END IF
+                    END IF
+            END SELECT
+        END IF
+
+        'end of custom controls
+        mousedown = 0
+        mouseup = 0
+    LOOP
 
 END FUNCTION
 
@@ -13983,248 +14407,6 @@ FUNCTION idef1box$ (lnks$, lnks)
 
 
 END FUNCTION
-
-SUB Mathbox
-    'Draw a box
-
-    '-------- generic dialog box header --------
-    PCOPY 0, 2
-    PCOPY 0, 1
-    SCREEN , , 1, 0
-    focus = 1
-    DIM p AS idedbptype
-    DIM o(1 TO 100) AS idedbotype
-    DIM sep AS STRING * 1
-    sep = CHR$(0)
-    '-------- end of generic dialog box header --------
-
-    DoAnother:
-    titlestr$ = "          Give me a Math Equation          "
-    messagestr$ = ""
-
-    '-------- init --------
-    i = 0
-    w = LEN(messagestr$) + 2
-    w2 = LEN(titlestr$) + 4
-    IF w < w2 THEN w = w2
-    idepar p, w, 4, titlestr$
-
-    i = i + 1
-    o(i).typ = 3
-    o(i).y = 4
-    o(i).txt = idenewtxt("#OK")
-    o(i).dft = 1
-    '-------- end of init --------
-
-    '-------- generic init --------
-    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
-    '-------- end of generic init --------
-
-    DO 'main loop
-
-
-        '-------- generic display dialog box & objects --------
-        idedrawpar p
-        f = 1: cx = 0: cy = 0
-        FOR i = 1 TO 100
-            IF o(i).typ THEN
-
-                'prepare object
-                o(i).foc = focus - f 'focus offset
-                o(i).cx = 0: o(i).cy = 0
-                idedrawobj o(i), f 'display object
-                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
-            END IF
-        NEXT i
-        lastfocus = f - 1
-        '-------- end of generic display dialog box & objects --------
-
-        '-------- custom display changes --------
-        COLOR 0, 7: LOCATE p.y + 2, p.x + 2: PRINT messagestr$;
-        '-------- end of custom display changes --------
-
-        'update visual page and cursor position
-        PCOPY 1, 0
-        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
-
-        '-------- read input --------
-        change = 0
-        DO
-            GetInput
-            IF mWHEEL THEN change = 1
-            IF KB THEN change = 1
-            IF mCLICK THEN mousedown = 1: change = 1
-            IF mRELEASE THEN mouseup = 1: change = 1
-            IF mB THEN change = 1
-            alt = KALT: IF alt <> oldalt THEN change = 1
-            oldalt = alt
-            _LIMIT 100
-        LOOP UNTIL change
-        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
-        'convert "alt+letter" scancode to letter's ASCII character
-        altletter$ = ""
-        IF alt AND NOT KCTRL THEN
-            IF LEN(K$) = 1 THEN
-                k = ASC(UCASE$(K$))
-                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
-                IF K$ = CHR$(27) THEN EXIT SUB
-            END IF
-        END IF
-        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
-        '-------- end of read input --------
-
-        '-------- generic input response --------
-        info = 0
-        IF K$ = "" THEN K$ = CHR$(255)
-        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
-        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
-        IF focus < 1 THEN focus = lastfocus
-        IF focus > lastfocus THEN focus = 1
-        IF K$ > CHR$(31) AND K$ < CHR$(123) THEN messagestr$ = messagestr$ + K$
-        IF K$ = CHR$(8) THEN messagestr$ = LEFT$(messagestr$, LEN(messagestr$) - 1)
-        f = 1
-        FOR i = 1 TO 100
-            t = o(i).typ
-            IF t THEN
-                focusoffset = focus - f
-                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
-            END IF
-        NEXT
-        '-------- end of generic input response --------
-
-        'specific post controls
-        IF K$ = CHR$(27) OR K$ = CHR$(13) OR (focus = 1 AND info <> 0) THEN EXIT DO
-        'end of custom controls
-
-        mousedown = 0
-        mouseup = 0
-    LOOP
-
-
-    temp$ = messagestr$ 'Make a back up of our user return
-    titlestr$ = "(H)ex/(D)ec  (U)n(C)omment  (ESC)ape/(R)edo"
-    ev$ = Evaluate_Expression$(messagestr$)
-    messagestr$ = ev$
-
-    '-------- init --------
-    i = 0
-    w = LEN(messagestr$) + 2
-    w2 = LEN(titlestr$) + 4
-    IF w < w2 THEN w = w2
-    idepar p, w, 4, titlestr$
-
-    i = i + 1
-    o(i).typ = 3
-    o(i).y = 4
-    o(i).txt = idenewtxt("OK")
-    o(i).dft = 1
-    '-------- end of init --------
-
-    '-------- generic init --------
-    FOR i = 1 TO 100: o(i).par = p: NEXT 'set parent info of objects
-    '-------- end of generic init --------
-
-
-
-
-    DO 'main loop
-
-
-        '-------- generic display dialog box & objects --------
-        idedrawpar p
-        f = 1: cx = 0: cy = 0
-        FOR i = 1 TO 100
-            IF o(i).typ THEN
-
-                'prepare object
-                o(i).foc = focus - f 'focus offset
-                o(i).cx = 0: o(i).cy = 0
-                idedrawobj o(i), f 'display object
-                IF o(i).cx THEN cx = o(i).cx: cy = o(i).cy
-            END IF
-        NEXT i
-        lastfocus = f - 1
-        '-------- end of generic display dialog box & objects --------
-
-        '-------- custom display changes --------
-        COLOR 0, 7: LOCATE p.y + 2, p.x + 2: PRINT messagestr$;
-        '-------- end of custom display changes --------
-
-        'update visual page and cursor position
-        PCOPY 1, 0
-        IF cx THEN SCREEN , , 0, 0: LOCATE cy, cx, 1: SCREEN , , 1, 0
-
-        '-------- read input --------
-        change = 0
-        DO
-            GetInput
-            IF mWHEEL THEN change = 1
-            IF KB THEN change = 1
-            IF mCLICK THEN mousedown = 1: change = 1
-            IF mRELEASE THEN mouseup = 1: change = 1
-            IF mB THEN change = 1
-            alt = KALT: IF alt <> oldalt THEN change = 1
-            oldalt = alt
-            _LIMIT 100
-        LOOP UNTIL change
-        IF alt AND NOT KCTRL THEN idehl = 1 ELSE idehl = 0
-        'convert "alt+letter" scancode to letter's ASCII character
-        altletter$ = ""
-        IF alt AND NOT KCTRL THEN
-            IF LEN(K$) = 1 THEN
-                k = ASC(UCASE$(K$))
-                IF k >= 65 AND k <= 90 THEN altletter$ = CHR$(k)
-            END IF
-        END IF
-        SCREEN , , 0, 0: LOCATE , , 0: SCREEN , , 1, 0
-        '-------- end of read input --------
-
-        '-------- generic input response --------
-        info = 0
-        IF K$ = "" THEN K$ = CHR$(255)
-        IF KSHIFT = 0 AND K$ = CHR$(9) THEN focus = focus + 1
-        IF (KSHIFT AND K$ = CHR$(9)) OR (INSTR(_OS$, "MAC") AND K$ = CHR$(25)) THEN focus = focus - 1: K$ = ""
-        IF focus < 1 THEN focus = lastfocus
-        IF focus > lastfocus THEN focus = 1
-        IF K$ = "H" OR K$ = "h" THEN ev$ = "&H" + HEX$(VAL(ev$))
-        IF K$ = "D" OR K$ = "d" THEN ev$ = STR$(VAL(ev$))
-        IF K$ = "U" OR K$ = "u" THEN comment = 0
-        IF K$ = "C" OR K$ = "c" THEN comment = -1
-        IF K$ = "R" OR K$ = "r" THEN GOTO DoAnother
-        IF K$ = CHR$(27) THEN EXIT SUB
-        IF comment THEN messagestr$ = ev$ + " ' " + temp$ ELSE messagestr$ = ev$
-
-        f = 1
-        FOR i = 1 TO 100
-            t = o(i).typ
-            IF t THEN
-                focusoffset = focus - f
-                ideobjupdate o(i), focus, f, focusoffset, K$, altletter$, mB, mousedown, mouseup, mX, mY, info, mWHEEL
-            END IF
-        NEXT
-        '-------- end of generic input response --------
-
-        'specific post controls
-        IF K$ = CHR$(27) OR K$ = CHR$(13) OR (focus = 1 AND info <> 0) THEN EXIT DO
-        'end of custom controls
-
-        mousedown = 0
-        mouseup = 0
-    LOOP
-
-    IF INSTR(messagestr$, " LINES INSERTED") THEN EXIT SUB
-
-    l = idecy
-    a$ = idegetline(l)
-    l$ = LEFT$(a$, idecx - 1): r$ = RIGHT$(a$, LEN(a$) - idecx + 1)
-    text$ = l$ + messagestr$ + r$
-    textlen = LEN(text$)
-    l$ = LEFT$(idet$, ideli - 1)
-    m$ = MKL$(textlen) + text$ + MKL$(textlen)
-    r$ = RIGHT$(idet$, LEN(idet$) - ideli - LEN(a$) - 7)
-    idet$ = l$ + m$ + r$
-    idecx = idecx + LEN(messagestr$)
-END SUB
 
 'After Cormen, Leiserson, Rivest & Stein "Introduction To Algoritms" via Wikipedia
 SUB sort (arr() AS STRING * 998)
