@@ -469,10 +469,11 @@ CONST HASHFLAG_XTYPENAME = 16384
 
 TYPE diskBuffers
     filename AS STRING
-    buffer AS STRING
     state AS _BYTE
 END TYPE
-DIM SHARED diskBuffer(1 TO 255) AS diskBuffers
+DIM SHARED diskBufferControl(1 TO 255) AS diskBuffers
+DIM SHARED diskBuffer(1 TO 255) AS STRING
+
 
 TYPE Label_Type
     State AS _UNSIGNED _BYTE '0=label referenced, 1=label created
@@ -25227,16 +25228,16 @@ SUB addWarning (whichLineNumber AS LONG, includeLevel AS LONG, incLineNumber AS 
 END SUB
 
 SUB OpenBuffer (filename$, mode$, handle)
-    IF diskBuffer(handle).state = -1 THEN ERROR 55: EXIT SUB
+    IF diskBufferControl(handle).state = -1 THEN ERROR 55: EXIT SUB
 
     'locate existing named buffer
-    FOR i = 1 TO UBOUND(diskBuffer)
-        IF diskBuffer(i).filename = filename$ THEN
-            IF diskBuffer(i).state THEN ERROR 55: EXIT SUB
+    FOR i = 1 TO UBOUND(diskBufferControl)
+        IF diskBufferControl(i).filename = filename$ THEN
+            IF diskBufferControl(i).state THEN ERROR 55: EXIT SUB
             'found existing buffer - reuse it.
-            tempBuffer$ = diskBuffer(i).buffer
-            diskBuffer(i).filename = ""
-            diskBuffer(i).buffer = ""
+            tempBuffer$ = diskBuffer(i)
+            diskBufferControl(i).filename = ""
+            diskBuffer(i) = ""
             EXIT FOR
         END IF
     NEXT
@@ -25246,53 +25247,53 @@ SUB OpenBuffer (filename$, mode$, handle)
 
     SELECT CASE UCASE$(mode$)
         CASE "OUTPUT"
-            diskBuffer(handle).buffer = ""
+            diskBuffer(handle) = ""
         CASE "APPEND"
-            diskBuffer(handle).buffer = tempBuffer$
+            diskBuffer(handle) = tempBuffer$
     END SELECT
-    diskBuffer(handle).filename = filename$
-    diskBuffer(handle).state = -1 'open
+    diskBufferControl(handle).filename = filename$
+    diskBufferControl(handle).state = -1 'open
 END SUB
 
 SUB CloseBuffer (handle)
-    diskBuffer(handle).state = 0
+    diskBufferControl(handle).state = 0
 END SUB
 
 SUB PrintToBuffer (handle, text$, retainCursor AS _BYTE)
     'IF diskBuffer(handle).state = 0 THEN ERROR 5: EXIT SUB
     IF NOT retainCursor THEN lf$ = CHR$(10)
-    diskBuffer(handle).buffer = diskBuffer(handle).buffer + text$ + lf$
+    diskBuffer(handle) = diskBuffer(handle) + text$ + lf$
 END SUB
 
 FUNCTION FreeBuffer%
-    FOR i = 1 TO UBOUND(diskBuffer)
-        IF diskBuffer(i).state = 0 THEN FreeBuffer% = i: EXIT FUNCTION
+    FOR i = 1 TO UBOUND(diskBufferControl)
+        IF diskBufferControl(i).state = 0 THEN FreeBuffer% = i: EXIT FUNCTION
     NEXT
 END FUNCTION
 
 SUB CommitBufferToDisk (handle)
-    IF LEN(diskBuffer(handle).filename) THEN
+    IF LEN(diskBufferControl(handle).filename) THEN
         CloseBuffer handle
-        IF _FILEEXISTS(diskBuffer(handle).filename) THEN KILL diskBuffer(handle).filename
+        IF _FILEEXISTS(diskBufferControl(handle).filename) THEN KILL diskBufferControl(handle).filename
         fh = FREEFILE
-        OPEN diskBuffer(handle).filename FOR BINARY AS #fh
-        tempbuffer$ = diskBuffer(handle).buffer
+        OPEN diskBufferControl(handle).filename FOR BINARY AS #fh
+        tempbuffer$ = diskBuffer(handle)
         PUT #fh, , tempbuffer$
         CLOSE #fh
     END IF
 END SUB
 
 SUB CommitBuffersToDisk
-    FOR i = 1 TO UBOUND(diskBuffer)
+    FOR i = 1 TO UBOUND(diskBufferControl)
         CommitBufferToDisk i
     NEXT
 END SUB
 
 SUB ResetBuffers
-    FOR i = 1 TO UBOUND(diskBuffer)
-        diskBuffer(i).filename = ""
-        diskBuffer(i).buffer = ""
-        diskBuffer(i).state = 0
+    FOR i = 1 TO UBOUND(diskBufferControl)
+        diskBufferControl(i).filename = ""
+        diskBuffer(i) = ""
+        diskBufferControl(i).state = 0
     NEXT
 END SUB
 
