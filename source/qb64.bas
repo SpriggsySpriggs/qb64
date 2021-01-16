@@ -1182,10 +1182,11 @@ DEPENDENCY(DEPENDENCY_CONSOLE_ONLY) = BU_DEPENDENCY_CONSOLE_ONLY AND 2 'Restore 
 Error_Happened = 0
 
 FOR closeall = 1 TO 255: CLOSE closeall: NEXT
+ResetBuffers
 
 OPEN tmpdir$ + "temp.bin" FOR OUTPUT LOCK WRITE AS #26 'relock
 
-fh = FREEFILE: OPEN tmpdir$ + "dyninfo.txt" FOR OUTPUT AS #fh: CLOSE #fh
+fh = FreeBuffer: OpenBuffer tmpdir$ + "dyninfo.txt", "OUTPUT", fh: CloseBuffer fh
 
 IF Debug THEN CLOSE #9: OPEN tmpdir$ + "debug.txt" FOR OUTPUT AS #9
 
@@ -1542,6 +1543,7 @@ udtenext(i2) = 0
 
 'begin compilation
 FOR closeall = 1 TO 255: CLOSE closeall: NEXT
+ResetBuffers
 OPEN tmpdir$ + "temp.bin" FOR OUTPUT LOCK WRITE AS #26 'relock
 
 ff = FREEFILE: OPEN tmpdir$ + "icon.rc" FOR OUTPUT AS #ff: CLOSE #ff
@@ -1549,23 +1551,18 @@ ff = FREEFILE: OPEN tmpdir$ + "icon.rc" FOR OUTPUT AS #ff: CLOSE #ff
 IF Debug THEN CLOSE #9: OPEN tmpdir$ + "debug.txt" FOR APPEND AS #9
 
 IF idemode = 0 THEN
-    qberrorhappened = -1
-    OPEN sourcefile$ FOR INPUT AS #1
-    qberrorhappened1:
-    IF qberrorhappened = 1 THEN
+    IF _FILEEXISTS(sourcefile$) = 0 THEN
         PRINT
         PRINT "Cannot locate source file:" + sourcefile$
         IF ConsoleMode THEN SYSTEM 1
         END 1
-    ELSE
-        CLOSE #1
     END IF
     qberrorhappened = 0
 END IF
 
 reginternal
 
-OPEN tmpdir$ + "global.txt" FOR OUTPUT AS #18
+OpenBuffer tmpdir$ + "global.txt", "OUTPUT", 18
 
 IF iderecompile THEN
     iderecompile = 0
@@ -2643,34 +2640,34 @@ OPEN tmpdir$ + "data.bin" FOR OUTPUT AS #16: CLOSE #16
 OPEN tmpdir$ + "data.bin" FOR BINARY AS #16
 
 
-OPEN tmpdir$ + "main.txt" FOR OUTPUT AS #12
-OPEN tmpdir$ + "maindata.txt" FOR OUTPUT AS #13
+OPEN tmpdir$ + "main.txt" , "OUTPUT", 12
+OPEN tmpdir$ + "maindata.txt" , "OUTPUT", 13
 
-OPEN tmpdir$ + "regsf.txt" FOR OUTPUT AS #17
+OPEN tmpdir$ + "regsf.txt" , "OUTPUT", 17
 
-OPEN tmpdir$ + "mainfree.txt" FOR OUTPUT AS #19
-OPEN tmpdir$ + "runline.txt" FOR OUTPUT AS #21
+OPEN tmpdir$ + "mainfree.txt" , "OUTPUT", 19
+OPEN tmpdir$ + "runline.txt" , "OUTPUT", 21
 
-OPEN tmpdir$ + "mainerr.txt" FOR OUTPUT AS #14 'main error handler
+OPEN tmpdir$ + "mainerr.txt" , "OUTPUT", 14 'main error handler
 'i. check the value of error_line
 'ii. jump to the appropriate label
 errorlabels = 0
 PRINT #14, "if (error_occurred){ error_occurred=0;"
 
-OPEN tmpdir$ + "chain.txt" FOR OUTPUT AS #22: CLOSE #22 'will be appended to as necessary
-OPEN tmpdir$ + "inpchain.txt" FOR OUTPUT AS #23: CLOSE #23 'will be appended to as necessary
+OPEN tmpdir$ + "chain.txt" , "OUTPUT", 22: CloseBuffer 22 'will be appended to as necessary
+OPEN tmpdir$ + "inpchain.txt" , "OUTPUT", 23: CloseBuffer 23 'will be appended to as necessary
 '*** #22 & #23 are reserved for usage by chain & inpchain ***
 
-OPEN tmpdir$ + "ontimer.txt" FOR OUTPUT AS #24
-OPEN tmpdir$ + "ontimerj.txt" FOR OUTPUT AS #25
+OPEN tmpdir$ + "ontimer.txt" , "OUTPUT", 24
+OPEN tmpdir$ + "ontimerj.txt" , "OUTPUT", 25
 
 '*****#26 used for locking qb64
 
-OPEN tmpdir$ + "onkey.txt" FOR OUTPUT AS #27
-OPEN tmpdir$ + "onkeyj.txt" FOR OUTPUT AS #28
+OPEN tmpdir$ + "onkey.txt" , "OUTPUT", 27
+OPEN tmpdir$ + "onkeyj.txt" , "OUTPUT", 28
 
-OPEN tmpdir$ + "onstrig.txt" FOR OUTPUT AS #29
-OPEN tmpdir$ + "onstrigj.txt" FOR OUTPUT AS #30
+OPEN tmpdir$ + "onstrig.txt" , "OUTPUT", 29
+OPEN tmpdir$ + "onstrigj.txt" , "OUTPUT", 30
 
 gosubid = 1
 'to be included whenever return without a label is called
@@ -2680,7 +2677,7 @@ gosubid = 1
 '0=return from main to calling sub/function/proc by return [NULL];
 '1... a global number representing a return point after a gosub
 'note: RETURN [label] should fail if a "return [NULL];" type return is required
-OPEN tmpdir$ + "ret0.txt" FOR OUTPUT AS #15
+OPEN tmpdir$ + "ret0.txt" , "OUTPUT", 15
 PRINT #15, "if (next_return_point){"
 PRINT #15, "next_return_point--;"
 PRINT #15, "switch(return_point[next_return_point]){"
@@ -4351,7 +4348,7 @@ DO
 
                                 IF subfuncn THEN
                                     f = FREEFILE
-                                    OPEN tmpdir$ + "maindata.txt" FOR APPEND AS #f
+                                    OPEN tmpdir$ + "maindata.txt" , "APPEND", f
                                 ELSE
                                     f = 13
                                 END IF
@@ -4389,7 +4386,7 @@ DO
 
                                 END IF
 
-                                IF subfuncn THEN CLOSE #f
+                                IF subfuncn THEN CloseBuffer f
 
                             END IF 'no header
 
@@ -4532,9 +4529,9 @@ DO
 
             subfuncret$ = ""
 
-            CLOSE #13: OPEN tmpdir$ + "data" + str2$(subfuncn) + ".txt" FOR OUTPUT AS #13
-            CLOSE #19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" FOR OUTPUT AS #19
-            CLOSE #15: OPEN tmpdir$ + "ret" + str2$(subfuncn) + ".txt" FOR OUTPUT AS #15
+            CloseBuffer 13: OPEN tmpdir$ + "data" + str2$(subfuncn) + ".txt" , "OUTPUT", 13
+            CloseBuffer 19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" , "OUTPUT", 19
+            CloseBuffer 15: OPEN tmpdir$ + "ret" + str2$(subfuncn) + ".txt" , "OUTPUT", 15
             PRINT #15, "if (next_return_point){"
             PRINT #15, "next_return_point--;"
             PRINT #15, "switch(return_point[next_return_point]){"
@@ -4548,11 +4545,11 @@ DO
             IF declaringlibrary THEN
                 IF sfdeclare = 0 AND indirectlibrary = 0 THEN
                     CLOSE #17
-                    OPEN tmpdir$ + "regsf_ignore.txt" FOR OUTPUT AS #17
+                    OPEN tmpdir$ + "regsf_ignore.txt" , "OUTPUT", 17
                 END IF
                 IF sfdeclare = 1 AND customtypelibrary = 0 AND dynamiclibrary = 0 AND indirectlibrary = 0 THEN
                     PRINT #17, "#include " + CHR$(34) + "externtype" + str2(ResolveStaticFunctions + 1) + ".txt" + CHR$(34)
-                    fh = FREEFILE: OPEN tmpdir$ + "externtype" + str2(ResolveStaticFunctions + 1) + ".txt" FOR OUTPUT AS #fh: CLOSE #fh
+                    fh = FREEFILE: OPEN tmpdir$ + "externtype" + str2(ResolveStaticFunctions + 1) + ".txt" , "OUTPUT", fh: CloseBuffer fh
                 END IF
             END IF
 
@@ -4598,7 +4595,7 @@ DO
                 IF Error_Happened THEN GOTO errmes
                 reginternalvariable = 0
                 'the following line stops the return variable from being free'd before being returned
-                CLOSE #19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" FOR OUTPUT AS #19
+                CloseBuffer 19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" , "OUTPUT", 19
                 'create return
                 IF (rettyp AND ISSTRING) THEN
                     r$ = refer$(str2$(currentid), id.t, 1)
@@ -4909,8 +4906,8 @@ DO
                     PRINT #17, "CUSTOMCALL_" + callname$ + " *" + callname$ + "=NULL;"
 
                     IF subfuncn THEN
-                        f = FREEFILE
-                        OPEN tmpdir$ + "maindata.txt" FOR APPEND AS #f
+                        f = FreeBuffer%
+                        OPEN tmpdir$ + "maindata.txt" , "APPEND", f
                     ELSE
                         f = 13
                     END IF
@@ -4918,7 +4915,7 @@ DO
 
                     PRINT #f, callname$ + "=(CUSTOMCALL_" + callname$ + "*)&" + aliasname$ + ";"
 
-                    IF subfuncn THEN CLOSE #f
+                    IF subfuncn THEN CloseBuffer f
 
                     'if no header exists to make the external function available, the function definition must be found
                     IF sfheader = 0 AND sfdeclare <> 0 THEN
@@ -4942,8 +4939,8 @@ DO
                         PRINT #17, "DLLCALL_" + removecast$(RTRIM$(id2.callname)) + " " + removecast$(RTRIM$(id2.callname)) + "=NULL;"
 
                         IF subfuncn THEN
-                            f = FREEFILE
-                            OPEN tmpdir$ + "maindata.txt" FOR APPEND AS #f
+                            f = FreeBuffer%
+                            OPEN tmpdir$ + "maindata.txt" , "APPEND", f
                         ELSE
                             f = 13
                         END IF
@@ -4959,7 +4956,7 @@ DO
                         END IF
                         PRINT #f, "}"
 
-                        IF subfuncn THEN CLOSE #f
+                        IF subfuncn THEN CloseBuffer f
 
                     END IF 'sfdeclare
                 END IF 'dynamic
@@ -4979,7 +4976,7 @@ DO
 
                 IF sfdeclare = 0 AND indirectlibrary = 0 THEN
                     CLOSE #17
-                    OPEN tmpdir$ + "regsf.txt" FOR APPEND AS #17
+                    OPEN tmpdir$ + "regsf.txt" , "APPEND", 17
                 END IF
 
             END IF 'declaring library
@@ -7085,8 +7082,8 @@ DO
             oldsubfunc$ = subfunc$
             subfunc$ = ""
             defdatahandle = 18
-            CLOSE #13: OPEN tmpdir$ + "maindata.txt" FOR APPEND AS #13
-            CLOSE #19: OPEN tmpdir$ + "mainfree.txt" FOR APPEND AS #19
+            CloseBuffer 13: OPEN tmpdir$ + "maindata.txt" , "APPEND", 13
+            CloseBuffer 19: OPEN tmpdir$ + "mainfree.txt" , "APPEND", 19
 
             'use 'try' to locate the variable (if it already exists)
             n2$ = n$ + s$ + ts$ 'note: either ts$ or s$ will exist unless it is a UDT
@@ -7153,8 +7150,8 @@ DO
             'switch back to sub/func
             subfunc$ = oldsubfunc$
             defdatahandle = 13
-            CLOSE #13: OPEN tmpdir$ + "data" + str2$(subfuncn) + ".txt" FOR APPEND AS #13
-            CLOSE #19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" FOR APPEND AS #19
+            CloseBuffer 13: OPEN tmpdir$ + "data" + str2$(subfuncn) + ".txt" , "APPEND", 13
+            CloseBuffer 19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" , "APPEND", 19
 
             IF getelement$(a$, i) = "," THEN i = i + 1: l$ = l$ + sp2 + ",": GOTO subfuncshr
             IF getelement$(a$, i) <> "" THEN a$ = "Expected ,": GOTO errmes
@@ -7873,19 +7870,19 @@ DO
                         IF x = 0 THEN x = idn + 1
 
                         'note: the following code only adds include directives, everything else is defered
-                        OPEN tmpdir$ + "chain.txt" FOR APPEND AS #22
+                        OPEN tmpdir$ + "chain.txt" , "APPEND", 22
                         'include directive
                         PRINT #22, "#include " + CHR$(34) + "chain" + str2$(x) + ".txt" + CHR$(34)
-                        CLOSE #22
+                        CloseBuffer 22
                         'create/clear include file
-                        OPEN tmpdir$ + "chain" + str2$(x) + ".txt" FOR OUTPUT AS #22: CLOSE #22
+                        OPEN tmpdir$ + "chain" + str2$(x) + ".txt" , "OUTPUT", 22: CloseBuffer 22
 
-                        OPEN tmpdir$ + "inpchain.txt" FOR APPEND AS #22
+                        OPEN tmpdir$ + "inpchain.txt" , "APPEND", 22
                         'include directive
                         PRINT #22, "#include " + CHR$(34) + "inpchain" + str2$(x) + ".txt" + CHR$(34)
-                        CLOSE #22
+                        CloseBuffer 22
                         'create/clear include file
-                        OPEN tmpdir$ + "inpchain" + str2$(x) + ".txt" FOR OUTPUT AS #22: CLOSE #22
+                        OPEN tmpdir$ + "inpchain" + str2$(x) + ".txt" , "OUTPUT", 22: CloseBuffer 22
 
                         'note: elements$="?"
                         IF x <> idn + 1 THEN GOTO skipdim 'array already exists
@@ -7942,8 +7939,8 @@ DO
                     use_global_byte_elements = 1
 
                     'switch output from main.txt to chain.txt
-                    CLOSE #12
-                    OPEN tmpdir$ + "chain.txt" FOR APPEND AS #12
+                    CloseBuffer 12
+                    OPEN tmpdir$ + "chain.txt" , "APPEND", 12
                     l2$ = tlayout$
 
                     PRINT #12, "int32val=1;" 'simple variable
@@ -7984,15 +7981,15 @@ DO
 
                     tlayout$ = l2$
                     'revert output to main.txt
-                    CLOSE #12
-                    OPEN tmpdir$ + "main.txt" FOR APPEND AS #12
+                    CloseBuffer 12
+                    OPEN tmpdir$ + "main.txt" , "APPEND", 12
 
 
                     'INPCHAIN.TXT (load)
 
                     'switch output from main.txt to chain.txt
-                    CLOSE #12
-                    OPEN tmpdir$ + "inpchain.txt" FOR APPEND AS #12
+                    CloseBuffer 12
+                    OPEN tmpdir$ + "inpchain.txt" , "APPEND", 12
                     l2$ = tlayout$
 
 
@@ -8029,8 +8026,8 @@ DO
 
                     tlayout$ = l2$
                     'revert output to main.txt
-                    CLOSE #12
-                    OPEN tmpdir$ + "main.txt" FOR APPEND AS #12
+                    CloseBuffer 12
+                    OPEN tmpdir$ + "main.txt" , "APPEND", 12
 
                     use_global_byte_elements = 0
 
@@ -10707,8 +10704,8 @@ PRINT #14, "exit(99);" 'in theory this line should never be run!
 PRINT #14, "}" 'close error jump handler
 
 'create CLEAR method "CLEAR"
-CLOSE #12 'close code handle
-OPEN tmpdir$ + "clear.txt" FOR OUTPUT AS #12 'direct code to clear.txt
+CloseBuffer 12 'close code handle
+OPEN tmpdir$ + "clear.txt" , "OUTPUT", 12 'direct code to clear.txt
 
 FOR i = 1 TO idn
 
@@ -10765,7 +10762,7 @@ FOR i = 1 TO idn
     cleared:
     clearerasereturned:
 NEXT
-CLOSE #12
+CloseBuffer 12
 
 IF Debug THEN
     PRINT #9, "finished making program!"
@@ -10930,6 +10927,7 @@ IF recompile THEN
     recompile = 0
     IF idemode THEN iderecompile = 1
     FOR closeall = 1 TO 255: CLOSE closeall: NEXT
+    ResetBuffers
     OPEN tmpdir$ + "temp.bin" FOR OUTPUT LOCK WRITE AS #26 'relock
     GOTO recompile
 END IF
@@ -10994,13 +10992,13 @@ IF Debug THEN PRINT #9, "Finished check!"
 
 'create include files for COMMON arrays
 
-CLOSE #12
+CloseBuffer 12
 
 'return to 'main'
 subfunc$ = ""
 defdatahandle = 18
-CLOSE #13: OPEN tmpdir$ + "maindata.txt" FOR APPEND AS #13
-CLOSE #19: OPEN tmpdir$ + "mainfree.txt" FOR APPEND AS #19
+CloseBuffer 13: OPEN tmpdir$ + "maindata.txt" , "APPEND", 13
+CloseBuffer 19: OPEN tmpdir$ + "mainfree.txt" , "APPEND", 19
 
 IF Console THEN
     PRINT #18, "int32 console=1;"
@@ -11021,14 +11019,14 @@ ELSE
 END IF
 
 fh = FREEFILE
-OPEN tmpdir$ + "dyninfo.txt" FOR APPEND AS #fh
+OPEN tmpdir$ + "dyninfo.txt" , "APPEND", fh
 IF Resize THEN
     PRINT #fh, "ScreenResize=1;"
 END IF
 IF Resize_Scale THEN
     PRINT #fh, "ScreenResizeScale=" + str2(Resize_Scale) + ";"
 END IF
-CLOSE #fh
+CloseBuffer fh
 
 'DATA_finalize
 PRINT #18, "ptrszint data_size=" + str2(DataOffset) + ";"
@@ -11139,7 +11137,7 @@ FOR x = 1 TO commonarraylistn
 
 
 
-        OPEN tmpdir$ + "inpchain" + str2$(i) + ".txt" FOR OUTPUT AS #12
+        OPEN tmpdir$ + "inpchain" + str2$(i) + ".txt" , "OUTPUT", 12
         PRINT #12, "if (int32val==2){" 'array place-holder
         'create buffer to store array as-is in global.txt
         x$ = str2$(uniquenumber)
@@ -11198,17 +11196,17 @@ FOR x = 1 TO commonarraylistn
         PRINT #12, "}" 'command=3 or 4
 
         PRINT #12, "}" 'array place-holder
-        CLOSE #12
+        CloseBuffer 12
 
 
         'save array (saves the buffered data, if any, for later)
 
-        OPEN tmpdir$ + "chain" + str2$(i) + ".txt" FOR OUTPUT AS #12
+        OPEN tmpdir$ + "chain" + str2$(i) + ".txt" , "OUTPUT", 12
         PRINT #12, "int32val=2;" 'placeholder
         PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
 
         PRINT #12, "sub_put(FF,NULL,byte_element((uint64)" + x1$ + "," + x2$ + "," + NewByteElement$ + "),0);"
-        CLOSE #12
+        CloseBuffer 12
 
 
 
@@ -11218,7 +11216,7 @@ FOR x = 1 TO commonarraylistn
 
         'load array
 
-        OPEN tmpdir$ + "inpchain" + str2$(i) + ".txt" FOR OUTPUT AS #12
+        OPEN tmpdir$ + "inpchain" + str2$(i) + ".txt" , "OUTPUT", 12
 
         PRINT #12, "if (int32val==2){" 'array place-holder
         PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
@@ -11298,11 +11296,11 @@ FOR x = 1 TO commonarraylistn
         PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
         PRINT #12, "}"
         PRINT #12, "}"
-        CLOSE #12
+        CloseBuffer 12
 
         'save array
 
-        OPEN tmpdir$ + "chain" + str2$(i) + ".txt" FOR OUTPUT AS #12
+        OPEN tmpdir$ + "chain" + str2$(i) + ".txt" , "OUTPUT", 12
 
         PRINT #12, "int32val=2;" 'placeholder
         PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
@@ -11379,7 +11377,7 @@ FOR x = 1 TO commonarraylistn
 
         PRINT #12, "}" 'don't add unless defined
 
-        CLOSE #12
+        CloseBuffer 12
 
 
 
@@ -11571,6 +11569,7 @@ IF idemode = 0 AND No_C_Compile_Mode = 0 THEN
     path.exe$ = t.path.exe$
 END IF
 
+CommitBuffersToDisk
 
 IF os$ = "WIN" THEN
     'Prepare to embed icon into .EXE
@@ -12530,7 +12529,7 @@ END IF
 
 qberrorcode = ERR
 qberrorline = ERL
-IF qberrorhappenedvalue = -1 THEN RESUME qberrorhappened1
+'IF qberrorhappenedvalue = -1 THEN RESUME qberrorhappened1
 IF qberrorhappenedvalue = -2 THEN RESUME qberrorhappened2
 IF qberrorhappenedvalue = -3 THEN RESUME qberrorhappened3
 END
@@ -13518,8 +13517,8 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
         'name will have include the sub/func name in its scope
         'variable/array will be created in main on startup
         defdatahandle = 18 'change from 13 to 18(global.txt)
-        CLOSE #13: OPEN tmpdir$ + "maindata.txt" FOR APPEND AS #13
-        CLOSE #19: OPEN tmpdir$ + "mainfree.txt" FOR APPEND AS #19
+        CloseBuffer 13: OPEN tmpdir$ + "maindata.txt" , "APPEND", 13
+        CloseBuffer 19: OPEN tmpdir$ + "mainfree.txt" , "APPEND", 19
     END IF
 
 
@@ -14677,8 +14676,8 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
     'restore STATIC state
     IF dimstatic <> 0 AND dimshared = 0 THEN
         defdatahandle = 13
-        CLOSE #13: OPEN tmpdir$ + "data" + str2$(subfuncn) + ".txt" FOR APPEND AS #13
-        CLOSE #19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" FOR APPEND AS #19
+        CloseBuffer 13: OPEN tmpdir$ + "data" + str2$(subfuncn) + ".txt" , "APPEND", 13
+        CloseBuffer 19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" , "APPEND", 19
     END IF
 
     tlayout$ = l$
@@ -25228,25 +25227,69 @@ SUB addWarning (whichLineNumber AS LONG, includeLevel AS LONG, incLineNumber AS 
 END SUB
 
 SUB OpenBuffer (filename$, mode$, handle)
-    'IF diskBuffer(handle).state = -1 THEN ERROR 5
-    diskBuffer(handle).filename = filename$
+    'IF diskBuffer(handle).state = -1 THEN ERROR 5: EXIT SUB
     SELECT CASE UCASE$(mode$)
         CASE "OUTPUT"
+            FOR i = 1 TO UBOUND(diskBuffer)
+                IF diskBuffer(i).filename = filename$ THEN
+                    IF i <> handle THEN
+                        IF diskBuffer(i).state = -1 THEN ERROR 5: EXIT SUB
+                        diskBuffer(i).buffer = ""
+                        diskBuffer(i).filename = ""
+                    END IF
+                    EXIT FOR
+                END IF
+            NEXT
             diskBuffer(handle).buffer = ""
         CASE "APPEND"
             FOR i = 1 TO UBOUND(diskBuffer)
-                IF i = handle THEN _CONTINUE
                 IF diskBuffer(i).filename = filename$ THEN
-                    diskBuffer(handle).buffer = diskBuffer(i).buffer
+                    IF i <> handle THEN diskBuffer(handle).buffer = diskBuffer(i).buffer
                     EXIT FOR
                 END IF
             NEXT
     END SELECT
+    diskBuffer(handle).filename = filename$
     diskBuffer(handle).state = -1 'open
 END SUB
 
 SUB CloseBuffer (handle)
     diskBuffer(handle).state = 0
+END SUB
+
+SUB PrintToBuffer (handle, text$, retainPosition AS _BYTE)
+    'IF diskBuffer(handle).state = 0 THEN ERROR 5: EXIT SUB
+    diskBuffer(handle).buffer = diskBuffer(handle).buffer + text$ + CHR$(10)
+END SUB
+
+FUNCTION FreeBuffer%
+    FOR i = 1 TO UBOUND(diskBuffer)
+        IF diskBuffer(i).state = 0 THEN FreeBuffer% = i: EXIT FUNCTION
+    NEXT
+END FUNCTION
+
+SUB CommitBufferToDisk (handle)
+    IF diskBuffer(handle).state THEN
+        IF _FILEEXISTS(diskBuffer(handle).filename) THEN KILL diskBuffer(handle).filename
+        fh = FREEFILE
+        OPEN diskBuffer(handle).filename FOR BINARY AS #fh
+        PUT #fh, , diskBuffer(handle).buffer
+        CLOSE #fh
+    END IF
+END SUB
+
+SUB CommitBuffersToDisk
+    FOR i = 1 TO UBOUND(diskBuffer)
+        CommitBufferToDisk i
+    NEXT
+END SUB
+
+SUB ResetBuffers
+    FOR i = 1 TO UBOUND(diskBuffer)
+        diskBuffer(i).filename = ""
+        diskBuffer(i).buffer = ""
+        diskBuffer(i).state = 0
+    NEXT
 END SUB
 
 '$INCLUDE:'utilities\strings.bas'
