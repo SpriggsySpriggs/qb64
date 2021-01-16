@@ -1850,7 +1850,7 @@ DO
 
                                     'create global buffer for SWAP space
                                     siz$ = str2$(udtxsize(i) \ 8)
-                                    PRINT #18, "char *g_tmp_udt_" + RTRIM$(udtxname(i)) + "=(char*)malloc(" + siz$ + ");"
+                                    PrintToBuffer 18, "char *g_tmp_udt_" + RTRIM$(udtxname(i)) + "=(char*)malloc(" + siz$ + ");", 0
 
                                     'print "END TYPE";udtxsize(i);udtxbytealign(i)
                                     GOTO finishedlinepp
@@ -2640,34 +2640,34 @@ OPEN tmpdir$ + "data.bin" FOR OUTPUT AS #16: CLOSE #16
 OPEN tmpdir$ + "data.bin" FOR BINARY AS #16
 
 
-OPEN tmpdir$ + "main.txt" , "OUTPUT", 12
-OPEN tmpdir$ + "maindata.txt" , "OUTPUT", 13
+OpenBuffer tmpdir$ + "main.txt", "OUTPUT", 12
+OpenBuffer tmpdir$ + "maindata.txt", "OUTPUT", 13
 
-OPEN tmpdir$ + "regsf.txt" , "OUTPUT", 17
+OpenBuffer tmpdir$ + "regsf.txt", "OUTPUT", 17
 
-OPEN tmpdir$ + "mainfree.txt" , "OUTPUT", 19
-OPEN tmpdir$ + "runline.txt" , "OUTPUT", 21
+OpenBuffer tmpdir$ + "mainfree.txt", "OUTPUT", 19
+OpenBuffer tmpdir$ + "runline.txt", "OUTPUT", 21
 
-OPEN tmpdir$ + "mainerr.txt" , "OUTPUT", 14 'main error handler
+OpenBuffer tmpdir$ + "mainerr.txt", "OUTPUT", 14 'main error handler
 'i. check the value of error_line
 'ii. jump to the appropriate label
 errorlabels = 0
-PRINT #14, "if (error_occurred){ error_occurred=0;"
+PrintToBuffer 14, "if (error_occurred){ error_occurred=0;", 0
 
-OPEN tmpdir$ + "chain.txt" , "OUTPUT", 22: CloseBuffer 22 'will be appended to as necessary
-OPEN tmpdir$ + "inpchain.txt" , "OUTPUT", 23: CloseBuffer 23 'will be appended to as necessary
+OpenBuffer tmpdir$ + "chain.txt", "OUTPUT", 22: CloseBuffer 22 'will be appended to as necessary
+OpenBuffer tmpdir$ + "inpchain.txt", "OUTPUT", 23: CloseBuffer 23 'will be appended to as necessary
 '*** #22 & #23 are reserved for usage by chain & inpchain ***
 
-OPEN tmpdir$ + "ontimer.txt" , "OUTPUT", 24
-OPEN tmpdir$ + "ontimerj.txt" , "OUTPUT", 25
+OpenBuffer tmpdir$ + "ontimer.txt", "OUTPUT", 24
+OpenBuffer tmpdir$ + "ontimerj.txt", "OUTPUT", 25
 
 '*****#26 used for locking qb64
 
-OPEN tmpdir$ + "onkey.txt" , "OUTPUT", 27
-OPEN tmpdir$ + "onkeyj.txt" , "OUTPUT", 28
+OpenBuffer tmpdir$ + "onkey.txt", "OUTPUT", 27
+OpenBuffer tmpdir$ + "onkeyj.txt", "OUTPUT", 28
 
-OPEN tmpdir$ + "onstrig.txt" , "OUTPUT", 29
-OPEN tmpdir$ + "onstrigj.txt" , "OUTPUT", 30
+OpenBuffer tmpdir$ + "onstrig.txt", "OUTPUT", 29
+OpenBuffer tmpdir$ + "onstrigj.txt", "OUTPUT", 30
 
 gosubid = 1
 'to be included whenever return without a label is called
@@ -2677,15 +2677,15 @@ gosubid = 1
 '0=return from main to calling sub/function/proc by return [NULL];
 '1... a global number representing a return point after a gosub
 'note: RETURN [label] should fail if a "return [NULL];" type return is required
-OPEN tmpdir$ + "ret0.txt" , "OUTPUT", 15
-PRINT #15, "if (next_return_point){"
-PRINT #15, "next_return_point--;"
-PRINT #15, "switch(return_point[next_return_point]){"
-PRINT #15, "case 0:"
+OpenBuffer tmpdir$ + "ret0.txt", "OUTPUT", 15
+PrintToBuffer 15, "if (next_return_point){", 0
+PrintToBuffer 15, "next_return_point--;", 0
+PrintToBuffer 15, "switch(return_point[next_return_point]){", 0
+PrintToBuffer 15, "case 0:", 0
 
-PRINT #15, "return;"
+PrintToBuffer 15, "return;", 0
 
-PRINT #15, "break;"
+PrintToBuffer 15, "break;", 0
 
 continueline = 0
 endifs = 0
@@ -2695,7 +2695,7 @@ linenumber = 0
 reallinenumber = 0
 declaringlibrary = 0
 
-PRINT #12, "S_0:;" 'note: REQUIRED by run statement
+PrintToBuffer 12, "S_0:;", 0 'note: REQUIRED by run statement
 
 IF UseGL THEN gl_include_content
 
@@ -3157,8 +3157,8 @@ DO
 
             ExeIconSet = linenumber
             SetDependency DEPENDENCY_ICON
-            IF NoChecks = 0 THEN PRINT #12, "do{"
-            PRINT #12, "sub__icon(NULL,NULL,0);"
+            IF NoChecks = 0 THEN PrintToBuffer 12, "do{", 0
+            PrintToBuffer 12, "sub__icon(NULL,NULL,0);", 0
             GOTO finishedline2
         END IF
 
@@ -3232,12 +3232,12 @@ DO
             Labels(r).Data_Offset = linedataoffset
 
             layout$ = tlayout$
-            PRINT #12, "LABEL_" + label$ + ":;"
+            PrintToBuffer 12, "LABEL_" + label$ + ":;", 0
 
 
             IF INSTR(label$, "p") THEN MID$(label$, INSTR(label$, "p"), 1) = "."
             IF RIGHT$(label$, 1) = "d" OR RIGHT$(label$, 1) = "s" THEN label$ = LEFT$(label$, LEN(label$) - 1)
-            PRINT #12, "last_line=" + label$ + ";"
+            PrintToBuffer 12, "last_line=" + label$ + ";", 0
             inclinenump$ = ""
             IF inclinenumber(inclevel) THEN
                 inclinenump$ = "," + str2$(inclinenumber(inclevel))
@@ -3246,7 +3246,7 @@ DO
                 inclinenump$ = inclinenump$ + "," + CHR$(34) + thisincname$ + CHR$(34)
             END IF
             IF NoChecks = 0 THEN
-                PRINT #12, "if(qbevent){evnt(" + str2$(linenumber) + inclinenump$ + ");r=0;}"
+                PrintToBuffer 12, "if(qbevent){evnt(" + str2$(linenumber) + inclinenump$ + ");r=0;}", 0
             END IF
             IF n = 1 THEN GOTO finishednonexec
             entireline$ = getelements(entireline$, 2, n): u$ = UCASE$(entireline$): n = n - 1
@@ -3295,7 +3295,7 @@ DO
 
                 IF LEN(layout$) THEN layout$ = layout$ + sp + tlayout$ + ":" ELSE layout$ = tlayout$ + ":"
 
-                PRINT #12, "LABEL_" + a$ + ":;"
+                PrintToBuffer 12, "LABEL_" + a$ + ":;", 0
                 inclinenump$ = ""
                 IF inclinenumber(inclevel) THEN
                     inclinenump$ = "," + str2$(inclinenumber(inclevel))
@@ -3304,7 +3304,7 @@ DO
                     inclinenump$ = inclinenump$ + "," + CHR$(34) + thisincname$ + CHR$(34)
                 END IF
                 IF NoChecks = 0 THEN
-                    PRINT #12, "if(qbevent){evnt(" + str2$(linenumber) + inclinenump$ + ");r=0;}"
+                    PrintToBuffer 12, "if(qbevent){evnt(" + str2$(linenumber) + inclinenump$ + ");r=0;}", 0
                 END IF
                 entireline$ = RIGHT$(entireline$, LEN(entireline$) - x3): u$ = UCASE$(entireline$)
                 n = numelements(entireline$): IF n = 0 THEN GOTO finishednonexec
@@ -4347,8 +4347,8 @@ DO
                             IF LEN(headername$) = 0 THEN 'no header
 
                                 IF subfuncn THEN
-                                    f = FREEFILE
-                                    OPEN tmpdir$ + "maindata.txt" , "APPEND", f
+                                    f = FreeBuffer%
+                                    OpenBuffer tmpdir$ + "maindata.txt", "APPEND", f
                                 ELSE
                                     f = 13
                                 END IF
@@ -4368,19 +4368,19 @@ DO
                                 IF sfdeclare THEN
 
                                     IF os$ = "WIN" THEN
-                                        PRINT #17, "HINSTANCE DLL_" + x2$ + "=NULL;"
-                                        PRINT #f, "if (!DLL_" + x2$ + "){"
-                                        PRINT #f, "DLL_" + x2$ + "=LoadLibrary(" + CHR$(34) + inlinelibname$ + CHR$(34) + ");"
-                                        PRINT #f, "if (!DLL_" + x2$ + ") error(259);"
-                                        PRINT #f, "}"
+                                        PrintToBuffer 17, "HINSTANCE DLL_" + x2$ + "=NULL;", 0
+                                        PrintToBuffer f, "if (!DLL_" + x2$ + "){", 0
+                                        PrintToBuffer f, "DLL_" + x2$ + "=LoadLibrary(" + CHR$(34) + inlinelibname$ + CHR$(34) + ");", 0
+                                        PrintToBuffer f, "if (!DLL_" + x2$ + ") error(259);", 0
+                                        PrintToBuffer f, "}", 0
                                     END IF
 
                                     IF os$ = "LNX" THEN
-                                        PRINT #17, "void *DLL_" + x2$ + "=NULL;"
-                                        PRINT #f, "if (!DLL_" + x2$ + "){"
-                                        PRINT #f, "DLL_" + x2$ + "=dlopen(" + CHR$(34) + inlinelibname$ + CHR$(34) + ",RTLD_LAZY);"
-                                        PRINT #f, "if (!DLL_" + x2$ + ") error(259);"
-                                        PRINT #f, "}"
+                                        PrintToBuffer 17, "void *DLL_" + x2$ + "=NULL;", 0
+                                        PrintToBuffer f, "if (!DLL_" + x2$ + "){", 0
+                                        PrintToBuffer f, "DLL_" + x2$ + "=dlopen(" + CHR$(34) + inlinelibname$ + CHR$(34) + ",RTLD_LAZY);", 0
+                                        PrintToBuffer f, "if (!DLL_" + x2$ + ") error(259);", 0
+                                        PrintToBuffer f, "}", 0
                                     END IF
 
 
@@ -4395,17 +4395,17 @@ DO
                         IF LEN(headername$) THEN
                             IF os$ = "WIN" THEN
                                 IF MID$(headername$, 2, 1) = ":" OR LEFT$(headername$, 1) = "\" THEN
-                                    PRINT #17, "#include " + CHR$(34) + headername$ + CHR$(34)
+                                    PrintToBuffer 17, "#include " + CHR$(34) + headername$ + CHR$(34), 0
                                 ELSE
-                                    PRINT #17, "#include " + CHR$(34) + "..\\..\\" + headername$ + CHR$(34)
+                                    PrintToBuffer 17, "#include " + CHR$(34) + "..\\..\\" + headername$ + CHR$(34), 0
                                 END IF
                             END IF
                             IF os$ = "LNX" THEN
 
                                 IF LEFT$(headername$, 1) = "/" THEN
-                                    PRINT #17, "#include " + CHR$(34) + headername$ + CHR$(34)
+                                    PrintToBuffer 17, "#include " + CHR$(34) + headername$ + CHR$(34), 0
                                 ELSE
-                                    PRINT #17, "#include " + CHR$(34) + "../../" + headername$ + CHR$(34)
+                                    PrintToBuffer 17, "#include " + CHR$(34) + "../../" + headername$ + CHR$(34), 0
                                 END IF
 
                             END IF
@@ -4529,27 +4529,27 @@ DO
 
             subfuncret$ = ""
 
-            CloseBuffer 13: OPEN tmpdir$ + "data" + str2$(subfuncn) + ".txt" , "OUTPUT", 13
-            CloseBuffer 19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" , "OUTPUT", 19
-            CloseBuffer 15: OPEN tmpdir$ + "ret" + str2$(subfuncn) + ".txt" , "OUTPUT", 15
-            PRINT #15, "if (next_return_point){"
-            PRINT #15, "next_return_point--;"
-            PRINT #15, "switch(return_point[next_return_point]){"
-            PRINT #15, "case 0:"
-            PRINT #15, "error(3);" 'return without gosub!
-            PRINT #15, "break;"
+            CloseBuffer 13: OpenBuffer tmpdir$ + "data" + str2$(subfuncn) + ".txt", "OUTPUT", 13
+            CloseBuffer 19: OpenBuffer tmpdir$ + "free" + str2$(subfuncn) + ".txt", "OUTPUT", 19
+            CloseBuffer 15: OpenBuffer tmpdir$ + "ret" + str2$(subfuncn) + ".txt", "OUTPUT", 15
+            PrintToBuffer 15, "if (next_return_point){", 0
+            PrintToBuffer 15, "next_return_point--;", 0
+            PrintToBuffer 15, "switch(return_point[next_return_point]){", 0
+            PrintToBuffer 15, "case 0:", 0
+            PrintToBuffer 15, "error(3);", 0 'return without gosub!
+            PrintToBuffer 15, "break;", 0
             defdatahandle = 13
 
             declibjmp1:
 
             IF declaringlibrary THEN
                 IF sfdeclare = 0 AND indirectlibrary = 0 THEN
-                    CLOSE #17
-                    OPEN tmpdir$ + "regsf_ignore.txt" , "OUTPUT", 17
+                    CloseBuffer 17
+                    OpenBuffer tmpdir$ + "regsf_ignore.txt", "OUTPUT", 17
                 END IF
                 IF sfdeclare = 1 AND customtypelibrary = 0 AND dynamiclibrary = 0 AND indirectlibrary = 0 THEN
-                    PRINT #17, "#include " + CHR$(34) + "externtype" + str2(ResolveStaticFunctions + 1) + ".txt" + CHR$(34)
-                    fh = FREEFILE: OPEN tmpdir$ + "externtype" + str2(ResolveStaticFunctions + 1) + ".txt" , "OUTPUT", fh: CloseBuffer fh
+                    PrintToBuffer 17, "#include " + CHR$(34) + "externtype" + str2(ResolveStaticFunctions + 1) + ".txt" + CHR$(34), 0
+                    fh = FreeBuffer%: OpenBuffer tmpdir$ + "externtype" + str2(ResolveStaticFunctions + 1) + ".txt", "OUTPUT", fh: CloseBuffer fh
                 END IF
             END IF
 
@@ -4570,18 +4570,18 @@ DO
 
                 IF declaringlibrary <> 0 AND dynamiclibrary <> 0 THEN
                     IF os$ = "WIN" THEN
-                        PRINT #17, "typedef " + t$ + " (CALLBACK* DLLCALL_" + removecast$(RTRIM$(id.callname)) + ")(";
+                        PrintToBuffer 17, "typedef " + t$ + " (CALLBACK* DLLCALL_" + removecast$(RTRIM$(id.callname)) + ")(", -1
                     END IF
                     IF os$ = "LNX" THEN
-                        PRINT #17, "typedef " + t$ + " (*DLLCALL_" + removecast$(RTRIM$(id.callname)) + ")(";
+                        PrintToBuffer 17, "typedef " + t$ + " (*DLLCALL_" + removecast$(RTRIM$(id.callname)) + ")(", -1
                     END IF
                 ELSEIF declaringlibrary <> 0 AND customtypelibrary <> 0 THEN
-                    PRINT #17, "typedef " + t$ + " CUSTOMCALL_" + removecast$(RTRIM$(id.callname)) + "(";
+                    PrintToBuffer 17, "typedef " + t$ + " CUSTOMCALL_" + removecast$(RTRIM$(id.callname)) + "(", -1
                 ELSE
-                    PRINT #17, t$ + " " + removecast$(RTRIM$(id.callname)) + "(";
+                    PrintToBuffer 17, t$ + " " + removecast$(RTRIM$(id.callname)) + "(", -1
                 END IF
                 IF declaringlibrary THEN GOTO declibjmp2
-                PRINT #12, t$ + " " + removecast$(RTRIM$(id.callname)) + "(";
+                PrintToBuffer 12, t$ + " " + removecast$(RTRIM$(id.callname)) + "(", -1
 
                 'create variable to return result
                 'if type wasn't specified, define it
@@ -4595,7 +4595,7 @@ DO
                 IF Error_Happened THEN GOTO errmes
                 reginternalvariable = 0
                 'the following line stops the return variable from being free'd before being returned
-                CloseBuffer 19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" , "OUTPUT", 19
+                CloseBuffer 19: OpenBuffer tmpdir$ + "free" + str2$(subfuncn) + ".txt", "OUTPUT", 19
                 'create return
                 IF (rettyp AND ISSTRING) THEN
                     r$ = refer$(str2$(currentid), id.t, 1)
@@ -4611,18 +4611,18 @@ DO
 
                 IF declaringlibrary <> 0 AND dynamiclibrary <> 0 THEN
                     IF os$ = "WIN" THEN
-                        PRINT #17, "typedef void (CALLBACK* DLLCALL_" + removecast$(RTRIM$(id.callname)) + ")(";
+                        PrintToBuffer 17, "typedef void (CALLBACK* DLLCALL_" + removecast$(RTRIM$(id.callname)) + ")(", -1
                     END IF
                     IF os$ = "LNX" THEN
-                        PRINT #17, "typedef void (*DLLCALL_" + removecast$(RTRIM$(id.callname)) + ")(";
+                        PrintToBuffer 17, "typedef void (*DLLCALL_" + removecast$(RTRIM$(id.callname)) + ")(", -1
                     END IF
                 ELSEIF declaringlibrary <> 0 AND customtypelibrary <> 0 THEN
-                    PRINT #17, "typedef void CUSTOMCALL_" + removecast$(RTRIM$(id.callname)) + "(";
+                    PrintToBuffer 17, "typedef void CUSTOMCALL_" + removecast$(RTRIM$(id.callname)) + "(", -1
                 ELSE
-                    PRINT #17, "void " + removecast$(RTRIM$(id.callname)) + "(";
+                    PrintToBuffer 17, "void " + removecast$(RTRIM$(id.callname)) + "(", -1
                 END IF
                 IF declaringlibrary THEN GOTO declibjmp2
-                PRINT #12, "void " + removecast$(RTRIM$(id.callname)) + "(";
+                PrintToBuffer 12, "void " + removecast$(RTRIM$(id.callname)) + "(", -1
             END IF
             declibjmp2:
 
@@ -4666,10 +4666,10 @@ DO
 
 
                         IF params > 1 THEN
-                            PRINT #17, ",";
+                            PrintToBuffer 17, ",", -1
 
                             IF declaringlibrary = 0 THEN
-                                PRINT #12, ",";
+                                PrintToBuffer 12, ",", -1
                             END IF
 
                         END IF
@@ -4782,18 +4782,18 @@ DO
                             dimsfarray = 0
                             r$ = refer$(str2$(currentid), id.t, 1)
                             IF Error_Happened THEN GOTO errmes
-                            PRINT #17, "ptrszint*" + r$;
-                            PRINT #12, "ptrszint*" + r$;
+                            PrintToBuffer 17, "ptrszint*" + r$, -1
+                            PrintToBuffer 12, "ptrszint*" + r$, -1
                         ELSE
 
                             IF declaringlibrary THEN
                                 'is it a udt?
                                 FOR xx = 1 TO lasttype
                                     IF t2$ = RTRIM$(udtxname(xx)) THEN
-                                        PRINT #17, "void*"
+                                        PrintToBuffer 17, "void*", 0
                                         GOTO decudt
                                     ELSEIF RTRIM$(udtxname(xx)) = "_MEM" AND t2$ = "MEM" AND qb64prefix_set = 1 THEN
-                                        PRINT #17, "void*"
+                                        PrintToBuffer 17, "void*", 0
                                         GOTO decudt
                                     END IF
                                 NEXT
@@ -4805,7 +4805,7 @@ DO
                                     IF byvalue = 1 THEN a$ = "STRINGs cannot be passed using BYVAL": GOTO errmes
                                     byvalue = 1 'use t$ as is
                                 END IF
-                                IF byvalue THEN PRINT #17, t$; ELSE PRINT #17, t$ + "*";
+                                IF byvalue THEN PrintToBuffer 17, t$, -1 ELSE PrintToBuffer 17, t$ + "*", -1
                                 decudt:
                                 GOTO declibjmp3
                             END IF
@@ -4829,27 +4829,27 @@ DO
                             'get the name of the variable
                             r$ = refer$(str2$(currentid), id.t, 1)
                             IF Error_Happened THEN GOTO errmes
-                            PRINT #17, t$ + "*" + r$;
-                            PRINT #12, t$ + "*" + r$;
+                            PrintToBuffer 17, t$ + "*" + r$, -1
+                            PrintToBuffer 12, t$ + "*" + r$, -1
                             IF t$ = "qbs" THEN
                                 u$ = str2$(uniquenumber)
-                                PRINT #13, "qbs*oldstr" + u$ + "=NULL;"
-                                PRINT #13, "if(" + r$ + "->tmp||" + r$ + "->fixed||" + r$ + "->readonly){"
-                                PRINT #13, "oldstr" + u$ + "=" + r$ + ";"
+                                PrintToBuffer 13, "qbs*oldstr" + u$ + "=NULL;", 0
+                                PrintToBuffer 13, "if(" + r$ + "->tmp||" + r$ + "->fixed||" + r$ + "->readonly){", 0
+                                PrintToBuffer 13, "oldstr" + u$ + "=" + r$ + ";", 0
 
-                                PRINT #13, "if (oldstr" + u$ + "->cmem_descriptor){"
-                                PRINT #13, r$ + "=qbs_new_cmem(oldstr" + u$ + "->len,0);"
-                                PRINT #13, "}else{"
-                                PRINT #13, r$ + "=qbs_new(oldstr" + u$ + "->len,0);"
-                                PRINT #13, "}"
+                                PrintToBuffer 13, "if (oldstr" + u$ + "->cmem_descriptor){", 0
+                                PrintToBuffer 13, r$ + "=qbs_new_cmem(oldstr" + u$ + "->len,0);", 0
+                                PrintToBuffer 13, "}else{", 0
+                                PrintToBuffer 13, r$ + "=qbs_new(oldstr" + u$ + "->len,0);", 0
+                                PrintToBuffer 13, "}", 0
 
-                                PRINT #13, "memcpy(" + r$ + "->chr,oldstr" + u$ + "->chr,oldstr" + u$ + "->len);"
-                                PRINT #13, "}"
+                                PrintToBuffer 13, "memcpy(" + r$ + "->chr,oldstr" + u$ + "->chr,oldstr" + u$ + "->len);", 0
+                                PrintToBuffer 13, "}", 0
 
-                                PRINT #19, "if(oldstr" + u$ + "){"
-                                PRINT #19, "if(oldstr" + u$ + "->fixed)qbs_set(oldstr" + u$ + "," + r$ + ");"
-                                PRINT #19, "qbs_free(" + r$ + ");"
-                                PRINT #19, "}"
+                                PrintToBuffer 19, "if(oldstr" + u$ + "){", 0
+                                PrintToBuffer 19, "if(oldstr" + u$ + "->fixed)qbs_set(oldstr" + u$ + "," + r$ + ");", 0
+                                PrintToBuffer 19, "qbs_free(" + r$ + ");", 0
+                                PrintToBuffer 19, "}", 0
                             END IF
                         END IF
                         declibjmp3:
@@ -4869,29 +4869,29 @@ DO
             IF addstatic2layout THEN l$ = l$ + sp + "STATIC"
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
 
-            PRINT #17, ");"
+            PrintToBuffer 17, ");", 0
 
             IF declaringlibrary THEN GOTO declibjmp4
 
-            PRINT #12, "){"
-            PRINT #12, "qbs *tqbs;"
-            PRINT #12, "ptrszint tmp_long;"
-            PRINT #12, "int32 tmp_fileno;"
-            PRINT #12, "uint32 qbs_tmp_base=qbs_tmp_list_nexti;"
-            PRINT #12, "uint8 *tmp_mem_static_pointer=mem_static_pointer;"
-            PRINT #12, "uint32 tmp_cmem_sp=cmem_sp;"
-            PRINT #12, "#include " + CHR$(34) + "data" + str2$(subfuncn) + ".txt" + CHR$(34)
+            PrintToBuffer 12, "){", 0
+            PrintToBuffer 12, "qbs *tqbs;", 0
+            PrintToBuffer 12, "ptrszint tmp_long;", 0
+            PrintToBuffer 12, "int32 tmp_fileno;", 0
+            PrintToBuffer 12, "uint32 qbs_tmp_base=qbs_tmp_list_nexti;", 0
+            PrintToBuffer 12, "uint8 *tmp_mem_static_pointer=mem_static_pointer;", 0
+            PrintToBuffer 12, "uint32 tmp_cmem_sp=cmem_sp;", 0
+            PrintToBuffer 12, "#include " + CHR$(34) + "data" + str2$(subfuncn) + ".txt" + CHR$(34), 0
 
             'create new _MEM lock for this scope
-            PRINT #12, "mem_lock *sf_mem_lock;" 'MUST not be static for recursion reasons
-            PRINT #12, "new_mem_lock();"
-            PRINT #12, "sf_mem_lock=mem_lock_tmp;"
-            PRINT #12, "sf_mem_lock->type=3;"
+            PrintToBuffer 12, "mem_lock *sf_mem_lock;", 0 'MUST not be static for recursion reasons
+            PrintToBuffer 12, "new_mem_lock();", 0
+            PrintToBuffer 12, "sf_mem_lock=mem_lock_tmp;", 0
+            PrintToBuffer 12, "sf_mem_lock->type=3;", 0
 
-            PRINT #12, "if (new_error) goto exit_subfunc;"
+            PrintToBuffer 12, "if (new_error) goto exit_subfunc;", 0
 
             'statementn = statementn + 1
-            'if nochecks=0 then PRINT #12, "S_" + str2$(statementn) + ":;"
+            'if nochecks=0 then PrintToBuffer 12, "S_" + str2$(statementn) + ":;"
 
             dimstatic = staticsf
 
@@ -4903,17 +4903,17 @@ DO
 
                     callname$ = removecast$(RTRIM$(id2.callname))
 
-                    PRINT #17, "CUSTOMCALL_" + callname$ + " *" + callname$ + "=NULL;"
+                    PrintToBuffer 17, "CUSTOMCALL_" + callname$ + " *" + callname$ + "=NULL;", 0
 
                     IF subfuncn THEN
                         f = FreeBuffer%
-                        OPEN tmpdir$ + "maindata.txt" , "APPEND", f
+                        OpenBuffer tmpdir$ + "maindata.txt", "APPEND", f
                     ELSE
                         f = 13
                     END IF
 
 
-                    PRINT #f, callname$ + "=(CUSTOMCALL_" + callname$ + "*)&" + aliasname$ + ";"
+                    PrintToBuffer f, callname$ + "=(CUSTOMCALL_" + callname$ + "*)&" + aliasname$ + ";", 0
 
                     IF subfuncn THEN CloseBuffer f
 
@@ -4936,25 +4936,25 @@ DO
                 IF dynamiclibrary THEN
                     IF sfdeclare THEN
 
-                        PRINT #17, "DLLCALL_" + removecast$(RTRIM$(id2.callname)) + " " + removecast$(RTRIM$(id2.callname)) + "=NULL;"
+                        PrintToBuffer 17, "DLLCALL_" + removecast$(RTRIM$(id2.callname)) + " " + removecast$(RTRIM$(id2.callname)) + "=NULL;", 0
 
                         IF subfuncn THEN
                             f = FreeBuffer%
-                            OPEN tmpdir$ + "maindata.txt" , "APPEND", f
+                            OpenBuffer tmpdir$ + "maindata.txt", "APPEND", f
                         ELSE
                             f = 13
                         END IF
 
-                        PRINT #f, "if (!" + removecast$(RTRIM$(id2.callname)) + "){"
+                        PrintToBuffer f, "if (!" + removecast$(RTRIM$(id2.callname)) + "){", 0
                         IF os$ = "WIN" THEN
-                            PRINT #f, removecast$(RTRIM$(id2.callname)) + "=(DLLCALL_" + removecast$(RTRIM$(id2.callname)) + ")GetProcAddress(DLL_" + DLLname$ + "," + CHR$(34) + aliasname$ + CHR$(34) + ");"
-                            PRINT #f, "if (!" + removecast$(RTRIM$(id2.callname)) + ") error(260);"
+                            PrintToBuffer f, removecast$(RTRIM$(id2.callname)) + "=(DLLCALL_" + removecast$(RTRIM$(id2.callname)) + ")GetProcAddress(DLL_" + DLLname$ + "," + CHR$(34) + aliasname$ + CHR$(34) + ");", 0
+                            PrintToBuffer f, "if (!" + removecast$(RTRIM$(id2.callname)) + ") error(260);", 0
                         END IF
                         IF os$ = "LNX" THEN
-                            PRINT #f, removecast$(RTRIM$(id2.callname)) + "=(DLLCALL_" + removecast$(RTRIM$(id2.callname)) + ")dlsym(DLL_" + DLLname$ + "," + CHR$(34) + aliasname$ + CHR$(34) + ");"
-                            PRINT #f, "if (dlerror()) error(260);"
+                            PrintToBuffer f, removecast$(RTRIM$(id2.callname)) + "=(DLLCALL_" + removecast$(RTRIM$(id2.callname)) + ")dlsym(DLL_" + DLLname$ + "," + CHR$(34) + aliasname$ + CHR$(34) + ");", 0
+                            PrintToBuffer f, "if (dlerror()) error(260);", 0
                         END IF
-                        PRINT #f, "}"
+                        PrintToBuffer f, "}", 0
 
                         IF subfuncn THEN CloseBuffer f
 
@@ -4975,8 +4975,8 @@ DO
                 END IF
 
                 IF sfdeclare = 0 AND indirectlibrary = 0 THEN
-                    CLOSE #17
-                    OPEN tmpdir$ + "regsf.txt" , "APPEND", 17
+                    CloseBuffer 17
+                    OpenBuffer tmpdir$ + "regsf.txt", "APPEND", 17
                 END IF
 
             END IF 'declaring library
@@ -5019,21 +5019,21 @@ DO
 
                 staticarraylist = "": staticarraylistn = 0 'remove previously listed arrays
                 dimstatic = 0
-                PRINT #12, "exit_subfunc:;"
+                PrintToBuffer 12, "exit_subfunc:;", 0
 
                 'release _MEM lock for this scope
-                PRINT #12, "free_mem_lock(sf_mem_lock);"
+                PrintToBuffer 12, "free_mem_lock(sf_mem_lock);", 0
 
-                PRINT #12, "#include " + CHR$(34) + "free" + str2$(subfuncn) + ".txt" + CHR$(34)
-                PRINT #12, "if ((tmp_mem_static_pointer>=mem_static)&&(tmp_mem_static_pointer<=mem_static_limit)) mem_static_pointer=tmp_mem_static_pointer; else mem_static_pointer=mem_static;"
-                PRINT #12, "cmem_sp=tmp_cmem_sp;"
-                IF subfuncret$ <> "" THEN PRINT #12, subfuncret$
+                PrintToBuffer 12, "#include " + CHR$(34) + "free" + str2$(subfuncn) + ".txt" + CHR$(34), 0
+                PrintToBuffer 12, "if ((tmp_mem_static_pointer>=mem_static)&&(tmp_mem_static_pointer<=mem_static_limit)) mem_static_pointer=tmp_mem_static_pointer; else mem_static_pointer=mem_static;", 0
+                PrintToBuffer 12, "cmem_sp=tmp_cmem_sp;", 0
+                IF subfuncret$ <> "" THEN PrintToBuffer 12, subfuncret$, 0
 
-                PRINT #12, "}" 'skeleton sub
+                PrintToBuffer 12, "}", 0 'skeleton sub
                 'ret???.txt
-                PRINT #15, "}" 'end case
-                PRINT #15, "}"
-                PRINT #15, "error(3);" 'no valid return possible
+                PrintToBuffer 15, "}", 0 'end case
+                PrintToBuffer 15, "}", 0
+                PrintToBuffer 15, "error(3);", 0 'no valid return possible
                 subfunc = ""
 
                 'unshare temp. shared variables
@@ -5245,9 +5245,9 @@ DO
                     simplenext:
                     IF controltype(controllevel) <> 2 THEN a$ = "NEXT without FOR": GOTO errmes
                     IF n <> 1 AND controlvalue(controllevel) <> currentid THEN a$ = "Incorrect variable after NEXT": GOTO errmes
-                    PRINT #12, "fornext_continue_" + str2$(controlid(controllevel)) + ":;"
-                    PRINT #12, "}"
-                    PRINT #12, "fornext_exit_" + str2$(controlid(controllevel)) + ":;"
+                    PrintToBuffer 12, "fornext_continue_" + str2$(controlid(controllevel)) + ":;", 0
+                    PrintToBuffer 12, "}", 0
+                    PrintToBuffer 12, "fornext_exit_" + str2$(controlid(controllevel)) + ":;", 0
                     controllevel = controllevel - 1
                     IF n = 1 THEN EXIT FOR
                     v$ = ""
@@ -5270,7 +5270,7 @@ DO
 
     IF n >= 1 THEN
         IF firstelement$ = "WHILE" THEN
-            IF NoChecks = 0 THEN PRINT #12, "S_" + str2$(statementn) + ":;": dynscope = 1
+            IF NoChecks = 0 THEN PrintToBuffer 12, "S_" + str2$(statementn) + ":;", 0: dynscope = 1
 
             'prevents code from being placed before 'CASE condition' in a SELECT CASE block
             IF SelectCaseCounter > 0 AND SelectCaseHasCaseBlock(SelectCaseCounter) = 0 THEN
@@ -5292,7 +5292,7 @@ DO
                 IF Error_Happened THEN GOTO errmes
                 IF stringprocessinghappened THEN e$ = cleanupstringprocessingcall$ + e$ + ")"
                 IF (typ AND ISSTRING) THEN a$ = "WHILE ERROR! Cannot accept a STRING type.": GOTO errmes
-                PRINT #12, "while((" + e$ + ")||new_error){"
+                PrintToBuffer 12, "while((" + e$ + ")||new_error){", 0
             ELSE
                 a$ = "WHILE ERROR! Expected expression after WHILE.": GOTO errmes
             END IF
@@ -5306,9 +5306,9 @@ DO
 
 
             IF controltype(controllevel) <> 5 THEN a$ = "WEND without WHILE": GOTO errmes
-            PRINT #12, "ww_continue_" + str2$(controlid(controllevel)) + ":;"
-            PRINT #12, "}"
-            PRINT #12, "ww_exit_" + str2$(controlid(controllevel)) + ":;"
+            PrintToBuffer 12, "ww_continue_" + str2$(controlid(controllevel)) + ":;", 0
+            PrintToBuffer 12, "}", 0
+            PrintToBuffer 12, "ww_exit_" + str2$(controlid(controllevel)) + ":;", 0
             controllevel = controllevel - 1
             l$ = "WEND"
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
@@ -5322,7 +5322,7 @@ DO
 
     IF n >= 1 THEN
         IF firstelement$ = "DO" THEN
-            IF NoChecks = 0 THEN PRINT #12, "S_" + str2$(statementn) + ":;": dynscope = 1
+            IF NoChecks = 0 THEN PrintToBuffer 12, "S_" + str2$(statementn) + ":;", 0: dynscope = 1
 
             'prevents code from being placed before 'CASE condition' in a SELECT CASE block
             IF SelectCaseCounter > 0 AND SelectCaseHasCaseBlock(SelectCaseCounter) = 0 THEN
@@ -5347,11 +5347,11 @@ DO
                 IF Error_Happened THEN GOTO errmes
                 IF stringprocessinghappened THEN e$ = cleanupstringprocessingcall$ + e$ + ")"
                 IF (typ AND ISSTRING) THEN a$ = "DO ERROR! Cannot accept a STRING type.": GOTO errmes
-                IF whileuntil = 1 THEN PRINT #12, "while((" + e$ + ")||new_error){" ELSE PRINT #12, "while((!(" + e$ + "))||new_error){"
+                IF whileuntil = 1 THEN PrintToBuffer 12, "while((" + e$ + ")||new_error){", 0 ELSE PrintToBuffer 12, "while((!(" + e$ + "))||new_error){", 0
                 controltype(controllevel) = 4
             ELSE
                 controltype(controllevel) = 3
-                PRINT #12, "do{"
+                PrintToBuffer 12, "do{", 0
             END IF
             controlid(controllevel) = uniquenumber
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
@@ -5364,7 +5364,7 @@ DO
             l$ = "LOOP"
             IF controltype(controllevel) <> 3 AND controltype(controllevel) <> 4 THEN a$ = "PROGRAM FLOW ERROR!": GOTO errmes
             IF n >= 2 THEN
-                IF NoChecks = 0 THEN PRINT #12, "S_" + str2$(statementn) + ":;": dynscope = 1
+                IF NoChecks = 0 THEN PrintToBuffer 12, "S_" + str2$(statementn) + ":;", 0: dynscope = 1
                 IF controltype(controllevel) = 4 THEN a$ = "PROGRAM FLOW ERROR!": GOTO errmes
                 whileuntil = 0
                 IF secondelement$ = "WHILE" THEN whileuntil = 1: l$ = l$ + sp + "WHILE"
@@ -5380,17 +5380,17 @@ DO
                 IF Error_Happened THEN GOTO errmes
                 IF stringprocessinghappened THEN e$ = cleanupstringprocessingcall$ + e$ + ")"
                 IF (typ AND ISSTRING) THEN a$ = "LOOP ERROR! Cannot accept a STRING type.": GOTO errmes
-                PRINT #12, "dl_continue_" + str2$(controlid(controllevel)) + ":;"
-                IF whileuntil = 1 THEN PRINT #12, "}while((" + e$ + ")&&(!new_error));" ELSE PRINT #12, "}while((!(" + e$ + "))&&(!new_error));"
+                PrintToBuffer 12, "dl_continue_" + str2$(controlid(controllevel)) + ":;", 0
+                IF whileuntil = 1 THEN PrintToBuffer 12, "}while((" + e$ + ")&&(!new_error));", 0 ELSE PrintToBuffer 12, "}while((!(" + e$ + "))&&(!new_error));", 0
             ELSE
-                PRINT #12, "dl_continue_" + str2$(controlid(controllevel)) + ":;"
+                PrintToBuffer 12, "dl_continue_" + str2$(controlid(controllevel)) + ":;", 0
                 IF controltype(controllevel) = 4 THEN
-                    PRINT #12, "}"
+                    PrintToBuffer 12, "}", 0
                 ELSE
-                    PRINT #12, "}while(1);" 'infinite loop!
+                    PrintToBuffer 12, "}while(1);", 0 'infinite loop!
                 END IF
             END IF
-            PRINT #12, "dl_exit_" + str2$(controlid(controllevel)) + ":;"
+            PrintToBuffer 12, "dl_exit_" + str2$(controlid(controllevel)) + ":;", 0
             controllevel = controllevel - 1
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             IF n = 1 THEN GOTO finishednonexec '***no error causing code, event checking done by DO***
@@ -5408,7 +5408,7 @@ DO
 
     IF n >= 1 THEN
         IF firstelement$ = "FOR" THEN
-            IF NoChecks = 0 THEN PRINT #12, "S_" + str2$(statementn) + ":;": dynscope = 1
+            IF NoChecks = 0 THEN PrintToBuffer 12, "S_" + str2$(statementn) + ":;", 0: dynscope = 1
 
             l$ = "FOR"
 
@@ -5499,15 +5499,15 @@ DO
             u$ = str2(uniquenumber)
 
             IF subfunc = "" THEN
-                PRINT #13, "static " + ctype$ + " fornext_value" + u$ + ";"
-                PRINT #13, "static " + ctype$ + " fornext_finalvalue" + u$ + ";"
-                PRINT #13, "static " + ctype$ + " fornext_step" + u$ + ";"
-                PRINT #13, "static uint8 fornext_step_negative" + u$ + ";"
+                PrintToBuffer 13, "static " + ctype$ + " fornext_value" + u$ + ";", 0
+                PrintToBuffer 13, "static " + ctype$ + " fornext_finalvalue" + u$ + ";", 0
+                PrintToBuffer 13, "static " + ctype$ + " fornext_step" + u$ + ";", 0
+                PrintToBuffer 13, "static uint8 fornext_step_negative" + u$ + ";", 0
             ELSE
-                PRINT #13, ctype$ + " fornext_value" + u$ + ";"
-                PRINT #13, ctype$ + " fornext_finalvalue" + u$ + ";"
-                PRINT #13, ctype$ + " fornext_step" + u$ + ";"
-                PRINT #13, "uint8 fornext_step_negative" + u$ + ";"
+                PrintToBuffer 13, ctype$ + " fornext_value" + u$ + ";", 0
+                PrintToBuffer 13, ctype$ + " fornext_finalvalue" + u$ + ";", 0
+                PrintToBuffer 13, ctype$ + " fornext_step" + u$ + ";", 0
+                PrintToBuffer 13, "uint8 fornext_step_negative" + u$ + ";", 0
             END IF
 
             'calculate start
@@ -5516,7 +5516,7 @@ DO
             l$ = l$ + sp + "=" + sp + tlayout$
             e$ = evaluatetotyp$(e$, ctyp)
             IF Error_Happened THEN GOTO errmes
-            PRINT #12, "fornext_value" + u$ + "=" + e$ + ";"
+            PrintToBuffer 12, "fornext_value" + u$ + "=" + e$ + ";", 0
 
             'final
             e$ = fixoperationorder$(p2$)
@@ -5524,7 +5524,7 @@ DO
             l$ = l$ + sp + "TO" + sp + tlayout$
             e$ = evaluatetotyp(e$, ctyp)
             IF Error_Happened THEN GOTO errmes
-            PRINT #12, "fornext_finalvalue" + u$ + "=" + e$ + ";"
+            PrintToBuffer 12, "fornext_finalvalue" + u$ + "=" + e$ + ";", 0
 
             'step
             e$ = fixoperationorder$(p3$)
@@ -5532,25 +5532,25 @@ DO
             IF stepused = 1 THEN l$ = l$ + sp + "STEP" + sp + tlayout$
             e$ = evaluatetotyp(e$, ctyp)
             IF Error_Happened THEN GOTO errmes
-            PRINT #12, "fornext_step" + u$ + "=" + e$ + ";"
-            PRINT #12, "if (fornext_step" + u$ + "<0) fornext_step_negative" + u$ + "=1; else fornext_step_negative" + u$ + "=0;"
+            PrintToBuffer 12, "fornext_step" + u$ + "=" + e$ + ";", 0
+            PrintToBuffer 12, "if (fornext_step" + u$ + "<0) fornext_step_negative" + u$ + "=1; else fornext_step_negative" + u$ + "=0;", 0
 
-            PRINT #12, "if (new_error) goto fornext_error" + u$ + ";"
-            PRINT #12, "goto fornext_entrylabel" + u$ + ";"
-            PRINT #12, "while(1){"
+            PrintToBuffer 12, "if (new_error) goto fornext_error" + u$ + ";", 0
+            PrintToBuffer 12, "goto fornext_entrylabel" + u$ + ";", 0
+            PrintToBuffer 12, "while(1){", 0
             typbak = typ
-            PRINT #12, "fornext_value" + u$ + "=fornext_step" + u$ + "+(" + refer$(v$, typ, 0) + ");"
+            PrintToBuffer 12, "fornext_value" + u$ + "=fornext_step" + u$ + "+(" + refer$(v$, typ, 0) + ");", 0
             IF Error_Happened THEN GOTO errmes
             typ = typbak
-            PRINT #12, "fornext_entrylabel" + u$ + ":"
+            PrintToBuffer 12, "fornext_entrylabel" + u$ + ":", 0
             setrefer v$, typ, "fornext_value" + u$, 1
             IF Error_Happened THEN GOTO errmes
-            PRINT #12, "if (fornext_step_negative" + u$ + "){"
-            PRINT #12, "if (fornext_value" + u$ + "<fornext_finalvalue" + u$ + ") break;"
-            PRINT #12, "}else{"
-            PRINT #12, "if (fornext_value" + u$ + ">fornext_finalvalue" + u$ + ") break;"
-            PRINT #12, "}"
-            PRINT #12, "fornext_error" + u$ + ":;"
+            PrintToBuffer 12, "if (fornext_step_negative" + u$ + "){", 0
+            PrintToBuffer 12, "if (fornext_value" + u$ + "<fornext_finalvalue" + u$ + ") break;", 0
+            PrintToBuffer 12, "}else{", 0
+            PrintToBuffer 12, "if (fornext_value" + u$ + ">fornext_finalvalue" + u$ + ") break;", 0
+            PrintToBuffer 12, "}", 0
+            PrintToBuffer 12, "fornext_error" + u$ + ":;", 0
 
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
 
@@ -5599,7 +5599,7 @@ DO
                 t = controltype(i)
                 IF t = 1 THEN
                     IF controlstate(controllevel) = 2 THEN a$ = "IF-THEN already contains an ELSE statement": GOTO errmes
-                    PRINT #12, "}else{"
+                    PrintToBuffer 12, "}else{", 0
                     controlstate(controllevel) = 2
                     IF lineelseused = 0 THEN lhscontrollevel = lhscontrollevel - 1
                     l$ = "ELSE"
@@ -5613,7 +5613,7 @@ DO
 
     IF n >= 3 THEN
         IF firstelement$ = "ELSEIF" THEN
-            IF NoChecks = 0 THEN PRINT #12, "S_" + str2$(statementn) + ":;": dynscope = 1
+            IF NoChecks = 0 THEN PrintToBuffer 12, "S_" + str2$(statementn) + ":;", 0: dynscope = 1
 
             FOR i = controllevel TO 1 STEP -1
                 t = controltype(i)
@@ -5623,7 +5623,7 @@ DO
                     controlvalue(controllevel) = controlvalue(controllevel) + 1
                     e$ = getelement$(a$, n)
                     IF e$ <> "THEN" THEN a$ = "Expected ELSEIF expression THEN": GOTO errmes
-                    PRINT #12, "}else{"
+                    PrintToBuffer 12, "}else{", 0
                     e$ = fixoperationorder$(getelements$(ca$, 2, n - 1))
                     IF Error_Happened THEN GOTO errmes
                     l$ = "ELSEIF" + sp + tlayout$ + sp + "THEN"
@@ -5636,9 +5636,9 @@ DO
                         a$ = "Expected ELSEIF LEN(stringexpression) THEN": GOTO errmes
                     END IF
                     IF stringprocessinghappened THEN
-                        PRINT #12, "if (" + cleanupstringprocessingcall$ + e$ + ")){"
+                        PrintToBuffer 12, "if (" + cleanupstringprocessingcall$ + e$ + ")){", 0
                     ELSE
-                        PRINT #12, "if (" + e$ + "){"
+                        PrintToBuffer 12, "if (" + e$ + "){", 0
                     END IF
                     lhscontrollevel = lhscontrollevel - 1
                     GOTO finishedline
@@ -5650,7 +5650,7 @@ DO
 
     IF n >= 3 THEN
         IF firstelement$ = "IF" THEN
-            IF NoChecks = 0 THEN PRINT #12, "S_" + str2$(statementn) + ":;": dynscope = 1
+            IF NoChecks = 0 THEN PrintToBuffer 12, "S_" + str2$(statementn) + ":;", 0: dynscope = 1
 
             'prevents code from being placed before 'CASE condition' in a SELECT CASE block
             IF SelectCaseCounter > 0 AND SelectCaseHasCaseBlock(SelectCaseCounter) = 0 THEN
@@ -5682,9 +5682,9 @@ DO
             END IF
 
             IF stringprocessinghappened THEN
-                PRINT #12, "if ((" + cleanupstringprocessingcall$ + e$ + "))||new_error){"
+                PrintToBuffer 12, "if ((" + cleanupstringprocessingcall$ + e$ + "))||new_error){", 0
             ELSE
-                PRINT #12, "if ((" + e$ + ")||new_error){"
+                PrintToBuffer 12, "if ((" + e$ + ")||new_error){", 0
             END IF
 
             IF iftype = 1 THEN l$ = l$ + sp + "THEN" 'note: 'GOTO' will be added when iftype=2
@@ -5708,9 +5708,9 @@ DO
             IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
         END IF
 
-        PRINT #12, "}"
+        PrintToBuffer 12, "}", 0
         FOR i = 1 TO controlvalue(controllevel)
-            PRINT #12, "}"
+            PrintToBuffer 12, "}", 0
         NEXT
         controllevel = controllevel - 1
         GOTO finishednonexec '***no error causing code, event checking done by IF***
@@ -5729,9 +5729,9 @@ DO
                 IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
             END IF
 
-            PRINT #12, "}"
+            PrintToBuffer 12, "}", 0
             FOR i = 1 TO controlvalue(controllevel)
-                PRINT #12, "}"
+                PrintToBuffer 12, "}", 0
             NEXT
             controllevel = controllevel - 1
             GOTO finishednonexec '***no error causing code, event checking done by IF***
@@ -5743,7 +5743,7 @@ DO
     'SELECT CASE
     IF n >= 1 THEN
         IF firstelement$ = "SELECT" THEN
-            IF NoChecks = 0 THEN PRINT #12, "S_" + str2$(statementn) + ":;": dynscope = 1
+            IF NoChecks = 0 THEN PrintToBuffer 12, "S_" + str2$(statementn) + ":;", 0: dynscope = 1
 
             'prevents code from being placed before 'CASE condition' in a SELECT CASE block
             IF SelectCaseCounter > 0 AND SelectCaseHasCaseBlock(SelectCaseCounter) = 0 THEN
@@ -5785,9 +5785,9 @@ DO
                 ELSE
                     IF (typ AND ISREFERENCE) THEN e$ = refer(e$, typ, 0)
                     IF Error_Happened THEN GOTO errmes
-                    PRINT #13, "static qbs *sc_" + str2$(u) + "=qbs_new(0,0);"
-                    PRINT #12, "qbs_set(sc_" + str2$(u) + "," + e$ + ");"
-                    IF stringprocessinghappened THEN PRINT #12, cleanupstringprocessingcall$ + "0);"
+                    PrintToBuffer 13, "static qbs *sc_" + str2$(u) + "=qbs_new(0,0);", 0
+                    PrintToBuffer 12, "qbs_set(sc_" + str2$(u) + "," + e$ + ");", 0
+                    IF stringprocessinghappened THEN PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
                 END IF
 
             ELSE
@@ -5803,9 +5803,9 @@ DO
                         IF (typ AND ISREFERENCE) THEN e$ = refer(e$, typ, 0)
                         IF Error_Happened THEN GOTO errmes
 
-                        PRINT #13, "static " + t$ + " sc_" + str2$(u) + ";"
-                        PRINT #12, "sc_" + str2$(u) + "=" + e$ + ";"
-                        IF stringprocessinghappened THEN PRINT #12, cleanupstringprocessingcall$ + "0);"
+                        PrintToBuffer 13, "static " + t$ + " sc_" + str2$(u) + ";", 0
+                        PrintToBuffer 12, "sc_" + str2$(u) + "=" + e$ + ";", 0
+                        IF stringprocessinghappened THEN PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
                     END IF
 
                 ELSE
@@ -5824,9 +5824,9 @@ DO
                     ELSE
                         IF (typ AND ISREFERENCE) THEN e$ = refer(e$, typ, 0)
                         IF Error_Happened THEN GOTO errmes
-                        PRINT #13, "static " + t$ + " sc_" + str2$(u) + ";"
-                        PRINT #12, "sc_" + str2$(u) + "=" + e$ + ";"
-                        IF stringprocessinghappened THEN PRINT #12, cleanupstringprocessingcall$ + "0);"
+                        PrintToBuffer 13, "static " + t$ + " sc_" + str2$(u) + ";", 0
+                        PrintToBuffer 12, "sc_" + str2$(u) + "=" + e$ + ";", 0
+                        IF stringprocessinghappened THEN PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
                     END IF
 
                 END IF
@@ -5837,8 +5837,8 @@ DO
             controlref(controllevel) = linenumber
             controltype(controllevel) = 10 + t
             controlid(controllevel) = u
-            IF EveryCaseSet(SelectCaseCounter) THEN PRINT #13, "int32 sc_" + str2$(controlid(controllevel)) + "_var;"
-            IF EveryCaseSet(SelectCaseCounter) THEN PRINT #12, "sc_" + str2$(controlid(controllevel)) + "_var=0;"
+            IF EveryCaseSet(SelectCaseCounter) THEN PrintToBuffer 13, "int32 sc_" + str2$(controlid(controllevel)) + "_var;", 0
+            IF EveryCaseSet(SelectCaseCounter) THEN PrintToBuffer 12, "sc_" + str2$(controlid(controllevel)) + "_var=0;", 0
             GOTO finishedline
         END IF
     END IF
@@ -5852,16 +5852,16 @@ DO
             '19=CASE ELSE (awaiting END SELECT)
             IF controltype(controllevel) = 18 THEN
                 everycasenewcase = everycasenewcase + 1
-                PRINT #12, "sc_ec_" + str2$(everycasenewcase) + "_end:;"
+                PrintToBuffer 12, "sc_ec_" + str2$(everycasenewcase) + "_end:;", 0
                 controllevel = controllevel - 1
-                IF EveryCaseSet(SelectCaseCounter) = 0 THEN PRINT #12, "goto sc_" + str2$(controlid(controllevel)) + "_end;"
-                PRINT #12, "}"
+                IF EveryCaseSet(SelectCaseCounter) = 0 THEN PrintToBuffer 12, "goto sc_" + str2$(controlid(controllevel)) + "_end;", 0
+                PrintToBuffer 12, "}", 0
             END IF
             IF controltype(controllevel) = 19 THEN
                 controllevel = controllevel - 1
-                IF EveryCaseSet(SelectCaseCounter) THEN PRINT #12, "} /* End of SELECT EVERYCASE ELSE */"
+                IF EveryCaseSet(SelectCaseCounter) THEN PrintToBuffer 12, "} /* End of SELECT EVERYCASE ELSE */", 0
             END IF
-            PRINT #12, "sc_" + str2$(controlid(controllevel)) + "_end:;"
+            PrintToBuffer 12, "sc_" + str2$(controlid(controllevel)) + "_end:;", 0
             IF controltype(controllevel) < 10 OR controltype(controllevel) > 17 THEN a$ = "END SELECT without SELECT CASE": GOTO errmes
 
             IF SelectCaseCounter > 0 AND SelectCaseHasCaseBlock(SelectCaseCounter) = 0 THEN
@@ -5898,16 +5898,16 @@ DO
                 lhscontrollevel = lhscontrollevel - 1
                 controllevel = controllevel - 1
                 everycasenewcase = everycasenewcase + 1
-                PRINT #12, "sc_ec_" + str2$(everycasenewcase) + "_end:;"
+                PrintToBuffer 12, "sc_ec_" + str2$(everycasenewcase) + "_end:;", 0
                 IF EveryCaseSet(SelectCaseCounter) = 0 THEN
-                    PRINT #12, "goto sc_" + str2$(controlid(controllevel)) + "_end;"
+                    PrintToBuffer 12, "goto sc_" + str2$(controlid(controllevel)) + "_end;", 0
                 ELSE
-                    PRINT #12, "sc_" + str2$(controlid(controllevel)) + "_var=-1;"
+                    PrintToBuffer 12, "sc_" + str2$(controlid(controllevel)) + "_var=-1;", 0
                 END IF
-                PRINT #12, "}"
+                PrintToBuffer 12, "}", 0
                 'following line fixes problem related to RESUME after error
                 'statementn = statementn + 1
-                'if nochecks=0 then PRINT #12, "S_" + str2$(statementn) + ":;"
+                'if nochecks=0 then PrintToBuffer 12, "S_" + str2$(statementn) + ":;"
             END IF
 
             IF controltype(controllevel) <> 6 AND (controltype(controllevel) < 10 OR controltype(controllevel) > 17) THEN a$ = "CASE without SELECT CASE": GOTO errmes
@@ -5967,7 +5967,7 @@ DO
             'CASE ELSE
             IF n = 2 THEN
                 IF getelement$(a$, 2) = "C-EL" THEN
-                    IF EveryCaseSet(SelectCaseCounter) THEN PRINT #12, "if (sc_" + str2$(controlid(controllevel)) + "_var==0) {"
+                    IF EveryCaseSet(SelectCaseCounter) THEN PrintToBuffer 12, "if (sc_" + str2$(controlid(controllevel)) + "_var==0) {", 0
                     controllevel = controllevel + 1: controltype(controllevel) = 19
                     controlref(controllevel) = controlref(controllevel - 1)
                     l$ = l$ + sp + "ELSE"
@@ -5976,7 +5976,7 @@ DO
                 END IF
             END IF
 
-            IF NoChecks = 0 THEN PRINT #12, "S_" + str2$(statementn) + ":;": dynscope = 1
+            IF NoChecks = 0 THEN PrintToBuffer 12, "S_" + str2$(statementn) + ":;", 0: dynscope = 1
 
 
 
@@ -6134,9 +6134,9 @@ DO
             NEXT
 
             IF stringprocessinghappened THEN
-                PRINT #12, "if ((" + cleanupstringprocessingcall$ + f12$ + "))||new_error){"
+                PrintToBuffer 12, "if ((" + cleanupstringprocessingcall$ + f12$ + "))||new_error){", 0
             ELSE
-                PRINT #12, "if ((" + f12$ + ")||new_error){"
+                PrintToBuffer 12, "if ((" + f12$ + ")||new_error){", 0
             END IF
 
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
@@ -6161,8 +6161,8 @@ DO
     'static scope commands:
 
     IF NoChecks = 0 THEN
-        PRINT #12, "do{"
-        'PRINT #12, "S_" + str2$(statementn) + ":;"
+        PrintToBuffer 12, "do{", 0
+        'PrintToBuffer 12, "S_" + str2$(statementn) + ":;"
     END IF
 
 
@@ -6202,7 +6202,7 @@ DO
                 l$ = l$ + tlayout$
                 e$ = evaluatetotyp(e$, -2)
                 IF Error_Happened THEN GOTO errmes
-                PRINT #12, "sub_paletteusing(" + e$ + "," + str2(bits) + ");"
+                PrintToBuffer 12, "sub_paletteusing(" + e$ + "," + str2(bits) + ");", 0
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 GOTO finishedline
             END IF 'using
@@ -6216,19 +6216,19 @@ DO
         IF secondelement$ = "OFF" THEN
             IF n > 2 THEN a$ = "Expected KEY OFF only": GOTO errmes
             l$ = l$ + "OFF": layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
-            PRINT #12, "key_off();"
+            PrintToBuffer 12, "key_off();", 0
             GOTO finishedline
         END IF
         IF secondelement$ = "ON" THEN
             IF n > 2 THEN a$ = "Expected KEY ON only": GOTO errmes
             l$ = l$ + "ON": layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
-            PRINT #12, "key_on();"
+            PrintToBuffer 12, "key_on();", 0
             GOTO finishedline
         END IF
         IF secondelement$ = "LIST" THEN
             IF n > 2 THEN a$ = "Expected KEY LIST only": GOTO errmes
             l$ = l$ + "LIST": layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
-            PRINT #12, "key_list();"
+            PrintToBuffer 12, "key_list();", 0
             GOTO finishedline
         END IF
         'search for comma to indicate assignment
@@ -6252,7 +6252,7 @@ DO
         l$ = l$ + tlayout$ + sp2 + "," + sp
         e$ = evaluatetotyp(e$, 32&)
         IF Error_Happened THEN GOTO errmes
-        PRINT #12, "key_assign(" + e$ + ",";
+        PrintToBuffer 12, "key_assign(" + e$ + ",", -1
         'string
         e$ = getelements$(ca$, i, n)
         e$ = fixoperationorder(e$)
@@ -6260,7 +6260,7 @@ DO
         l$ = l$ + tlayout$
         e$ = evaluatetotyp(e$, ISSTRING)
         IF Error_Happened THEN GOTO errmes
-        PRINT #12, e$ + ");"
+        PrintToBuffer 12, e$ + ");", 0
         layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
         GOTO finishedline
     END IF 'KEY
@@ -6291,7 +6291,7 @@ DO
         l$ = l$ + tlayout$ + sp2 + "," + sp
         e$ = evaluatetotyp(e$, 32&)
         IF Error_Happened THEN GOTO errmes
-        PRINT #12, "field_new(" + e$ + ");"
+        PrintToBuffer 12, "field_new(" + e$ + ");", 0
 
         fieldnext:
 
@@ -6346,7 +6346,7 @@ DO
         IF (typ AND ISREFERENCE) = 0 THEN GOTO fielderror
         e$ = refer(e$, typ, 0)
         IF Error_Happened THEN GOTO errmes
-        PRINT #12, "field_add(" + e$ + "," + sizee$ + ");"
+        PrintToBuffer 12, "field_add(" + e$ + "," + sizee$ + ");", 0
 
         IF i < n THEN
             i = i + 1
@@ -6383,7 +6383,7 @@ DO
                 FOR i = controllevel TO 1 STEP -1
                     t = controltype(i)
                     IF t = 3 OR t = 4 THEN
-                        PRINT #12, "goto dl_exit_" + str2$(controlid(i)) + ";"
+                        PrintToBuffer 12, "goto dl_exit_" + str2$(controlid(i)) + ";", 0
                         layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                         GOTO finishedline
                     END IF
@@ -6396,7 +6396,7 @@ DO
                 FOR i = controllevel TO 1 STEP -1
                     t = controltype(i)
                     IF t = 2 THEN
-                        PRINT #12, "goto fornext_exit_" + str2$(controlid(i)) + ";"
+                        PrintToBuffer 12, "goto fornext_exit_" + str2$(controlid(i)) + ";", 0
                         layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                         GOTO finishedline
                     END IF
@@ -6409,7 +6409,7 @@ DO
                 FOR i = controllevel TO 1 STEP -1
                     t = controltype(i)
                     IF t = 5 THEN
-                        PRINT #12, "goto ww_exit_" + str2$(controlid(i)) + ";"
+                        PrintToBuffer 12, "goto ww_exit_" + str2$(controlid(i)) + ";", 0
                         layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                         GOTO finishedline
                     END IF
@@ -6422,7 +6422,7 @@ DO
                 FOR i = controllevel TO 1 STEP -1
                     t = controltype(i)
                     IF t = 18 OR t = 19 THEN 'CASE/CASE ELSE
-                        PRINT #12, "goto sc_" + str2$(controlid(i - 1)) + "_end;"
+                        PrintToBuffer 12, "goto sc_" + str2$(controlid(i - 1)) + "_end;", 0
                         layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                         GOTO finishedline
                     END IF
@@ -6435,11 +6435,11 @@ DO
                 FOR i = controllevel TO 1 STEP -1
                     t = controltype(i)
                     IF t = 18 THEN 'CASE
-                        PRINT #12, "goto sc_ec_" + str2$(everycasenewcase + 1) + "_end;"
+                        PrintToBuffer 12, "goto sc_ec_" + str2$(everycasenewcase + 1) + "_end;", 0
                         layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                         GOTO finishedline
                     ELSEIF t = 19 THEN 'CASE ELSE
-                        PRINT #12, "goto sc_" + str2$(controlid(i - 1)) + "_end;"
+                        PrintToBuffer 12, "goto sc_" + str2$(controlid(i - 1)) + "_end;", 0
                         layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                         GOTO finishedline
                     END IF
@@ -6489,7 +6489,7 @@ DO
             a$ = "Expected )": GOTO errmes
             onstriggotarg:
             IF e2$ = "" THEN a$ = "Expected ... )": GOTO errmes
-            PRINT #12, "onstrig_setup(";
+            PrintToBuffer 12, "onstrig_setup(", -1
 
             'sort scanned results
             IF LEN(e3$) THEN
@@ -6506,7 +6506,7 @@ DO
             e$ = fixoperationorder$(optI$): IF Error_Happened THEN GOTO errmes
             l$ = l$ + sp2 + tlayout$
             e$ = evaluatetotyp(e$, 32&): IF Error_Happened THEN GOTO errmes
-            PRINT #12, e$ + ",";
+            PrintToBuffer 12, e$ + ",", -1
 
             'controller , passed
             IF optPassed$ = "1" THEN
@@ -6516,7 +6516,7 @@ DO
             ELSE
                 e$ = optController$
             END IF
-            PRINT #12, e$ + "," + optPassed$ + ",";
+            PrintToBuffer 12, e$ + "," + optPassed$ + ",", -1
 
             l$ = l$ + sp2 + ")" + sp 'close brackets
 
@@ -6524,13 +6524,13 @@ DO
             IF i > n THEN a$ = "Expected GOSUB/sub-name": GOTO errmes
             a2$ = getelement$(a$, i): i = i + 1
             onstrigid = onstrigid + 1
-            PRINT #12, str2$(onstrigid) + ",";
+            PrintToBuffer 12, str2$(onstrigid) + ",", -1
 
             IF a2$ = "GOSUB" THEN
                 IF i > n THEN a$ = "Expected linenumber/label": GOTO errmes
                 a2$ = getelement$(ca$, i): i = i + 1
 
-                PRINT #12, "0);"
+                PrintToBuffer 12, "0);", 0
 
                 IF validlabel(a2$) = 0 THEN a$ = "Invalid label": GOTO errmes
 
@@ -6563,16 +6563,16 @@ DO
                 END IF 'x
                 l$ = l$ + "GOSUB" + sp + tlayout$
 
-                PRINT #30, "if(strig_event_id==" + str2$(onstrigid) + ")goto LABEL_" + a2$ + ";"
+                PrintToBuffer 30, "if(strig_event_id==" + str2$(onstrigid) + ")goto LABEL_" + a2$ + ";", 0
 
-                PRINT #29, "case " + str2$(onstrigid) + ":"
-                PRINT #29, "strig_event_occurred++;"
-                PRINT #29, "strig_event_id=" + str2$(onstrigid) + ";"
-                PRINT #29, "strig_event_occurred++;"
-                PRINT #29, "return_point[next_return_point++]=0;"
-                PRINT #29, "if (next_return_point>=return_points) more_return_points();"
-                PRINT #29, "QBMAIN(NULL);"
-                PRINT #29, "break;"
+                PrintToBuffer 29, "case " + str2$(onstrigid) + ":", 0
+                PrintToBuffer 29, "strig_event_occurred++;", 0
+                PrintToBuffer 29, "strig_event_id=" + str2$(onstrigid) + ";", 0
+                PrintToBuffer 29, "strig_event_occurred++;", 0
+                PrintToBuffer 29, "return_point[next_return_point++]=0;", 0
+                PrintToBuffer 29, "if (next_return_point>=return_points) more_return_points();", 0
+                PrintToBuffer 29, "QBMAIN(NULL);", 0
+                PrintToBuffer 29, "break;", 0
 
                 IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
                 layoutdone = 1
@@ -6593,16 +6593,16 @@ DO
 
                 l$ = l$ + RTRIM$(id.cn)
 
-                PRINT #29, "case " + str2$(onstrigid) + ":"
-                PRINT #29, RTRIM$(id.callname) + "(";
+                PrintToBuffer 29, "case " + str2$(onstrigid) + ":", 0
+                PrintToBuffer 29, RTRIM$(id.callname) + "(", -1
 
                 IF id.args > 1 THEN a$ = "SUB requires more than one argument": GOTO errmes
 
                 IF i > n THEN
 
                     IF id.args = 1 THEN a$ = "Expected argument after SUB": GOTO errmes
-                    PRINT #12, "0);"
-                    PRINT #29, ");"
+                    PrintToBuffer 12, "0);", 0
+                    PrintToBuffer 29, ");", 0
 
                 ELSE
 
@@ -6617,7 +6617,7 @@ DO
                     IF B = 64 THEN ct$ = "int64"
                     IF t AND ISOFFSET THEN ct$ = "ptrszint"
                     IF t AND ISUNSIGNED THEN ct$ = "u" + ct$
-                    PRINT #29, "(" + ct$ + "*)&i64);"
+                    PrintToBuffer 29, "(" + ct$ + "*)&i64);", 0
 
                     e$ = getelements$(ca$, i, n)
                     e$ = fixoperationorder$(e$)
@@ -6625,11 +6625,11 @@ DO
                     l$ = l$ + sp + tlayout$
                     e$ = evaluatetotyp(e$, INTEGER64TYPE - ISPOINTER)
                     IF Error_Happened THEN GOTO errmes
-                    PRINT #12, e$ + ");"
+                    PrintToBuffer 12, e$ + ");", 0
 
                 END IF
 
-                PRINT #29, "break;"
+                PrintToBuffer 29, "break;", 0
                 IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
                 layoutdone = 1
                 GOTO finishedline
@@ -6680,7 +6680,7 @@ DO
             a$ = "Expected )": GOTO errmes
             ontimgotarg:
             IF e2$ = "" THEN a$ = "Expected ... )": GOTO errmes
-            PRINT #12, "ontimer_setup(";
+            PrintToBuffer 12, "ontimer_setup(", -1
             'i
             IF LEN(e3$) THEN
                 e$ = fixoperationorder$(e3$)
@@ -6688,9 +6688,9 @@ DO
                 l$ = l$ + sp2 + tlayout$ + "," + sp
                 e$ = evaluatetotyp(e$, 32&)
                 IF Error_Happened THEN GOTO errmes
-                PRINT #12, e$ + ",";
+                PrintToBuffer 12, e$ + ",", -1
             ELSE
-                PRINT #12, "0,";
+                PrintToBuffer 12, "0,", -1
                 l$ = l$ + sp2
             END IF
             'sec
@@ -6699,18 +6699,18 @@ DO
             l$ = l$ + tlayout$ + sp2 + ")" + sp
             e$ = evaluatetotyp(e$, DOUBLETYPE - ISPOINTER)
             IF Error_Happened THEN GOTO errmes
-            PRINT #12, e$ + ",";
+            PrintToBuffer 12, e$ + ",", -1
             i = i + 1
             IF i > n THEN a$ = "Expected GOSUB/sub-name": GOTO errmes
             a2$ = getelement$(a$, i): i = i + 1
             ontimerid = ontimerid + 1
-            PRINT #12, str2$(ontimerid) + ",";
+            PrintToBuffer 12, str2$(ontimerid) + ",", -1
 
             IF a2$ = "GOSUB" THEN
                 IF i > n THEN a$ = "Expected linenumber/label": GOTO errmes
                 a2$ = getelement$(ca$, i): i = i + 1
 
-                PRINT #12, "0);"
+                PrintToBuffer 12, "0);", 0
 
                 IF validlabel(a2$) = 0 THEN a$ = "Invalid label": GOTO errmes
 
@@ -6743,16 +6743,16 @@ DO
                 END IF 'x
                 l$ = l$ + "GOSUB" + sp + tlayout$
 
-                PRINT #25, "if(timer_event_id==" + str2$(ontimerid) + ")goto LABEL_" + a2$ + ";"
+                PrintToBuffer 25, "if(timer_event_id==" + str2$(ontimerid) + ")goto LABEL_" + a2$ + ";", 0
 
-                PRINT #24, "case " + str2$(ontimerid) + ":"
-                PRINT #24, "timer_event_occurred++;"
-                PRINT #24, "timer_event_id=" + str2$(ontimerid) + ";"
-                PRINT #24, "timer_event_occurred++;"
-                PRINT #24, "return_point[next_return_point++]=0;"
-                PRINT #24, "if (next_return_point>=return_points) more_return_points();"
-                PRINT #24, "QBMAIN(NULL);"
-                PRINT #24, "break;"
+                PrintToBuffer 24, "case " + str2$(ontimerid) + ":", 0
+                PrintToBuffer 24, "timer_event_occurred++;", 0
+                PrintToBuffer 24, "timer_event_id=" + str2$(ontimerid) + ";", 0
+                PrintToBuffer 24, "timer_event_occurred++;", 0
+                PrintToBuffer 24, "return_point[next_return_point++]=0;", 0
+                PrintToBuffer 24, "if (next_return_point>=return_points) more_return_points();", 0
+                PrintToBuffer 24, "QBMAIN(NULL);", 0
+                PrintToBuffer 24, "break;", 0
 
 
 
@@ -6780,16 +6780,16 @@ DO
 
                 l$ = l$ + RTRIM$(id.cn)
 
-                PRINT #24, "case " + str2$(ontimerid) + ":"
-                PRINT #24, RTRIM$(id.callname) + "(";
+                PrintToBuffer 24, "case " + str2$(ontimerid) + ":", 0
+                PrintToBuffer 24, RTRIM$(id.callname) + "(", -1
 
                 IF id.args > 1 THEN a$ = "SUB requires more than one argument": GOTO errmes
 
                 IF i > n THEN
 
                     IF id.args = 1 THEN a$ = "Expected argument after SUB": GOTO errmes
-                    PRINT #12, "0);"
-                    PRINT #24, ");"
+                    PrintToBuffer 12, "0);", 0
+                    PrintToBuffer 24, ");", 0
 
                 ELSE
 
@@ -6804,7 +6804,7 @@ DO
                     IF B = 64 THEN ct$ = "int64"
                     IF t AND ISOFFSET THEN ct$ = "ptrszint"
                     IF t AND ISUNSIGNED THEN ct$ = "u" + ct$
-                    PRINT #24, "(" + ct$ + "*)&i64);"
+                    PrintToBuffer 24, "(" + ct$ + "*)&i64);", 0
 
                     e$ = getelements$(ca$, i, n)
                     e$ = fixoperationorder$(e$)
@@ -6812,11 +6812,11 @@ DO
                     l$ = l$ + sp + tlayout$
                     e$ = evaluatetotyp(e$, INTEGER64TYPE - ISPOINTER)
                     IF Error_Happened THEN GOTO errmes
-                    PRINT #12, e$ + ");"
+                    PrintToBuffer 12, e$ + ");", 0
 
                 END IF
 
-                PRINT #24, "break;"
+                PrintToBuffer 24, "break;", 0
                 IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
                 layoutdone = 1
                 GOTO finishedline
@@ -6857,19 +6857,19 @@ DO
             l$ = l$ + tlayout$ + sp2 + ")" + sp
             e$ = evaluatetotyp(e$, DOUBLETYPE - ISPOINTER)
             IF Error_Happened THEN GOTO errmes
-            PRINT #12, "onkey_setup(" + e$ + ",";
+            PrintToBuffer 12, "onkey_setup(" + e$ + ",", -1
 
             i = i + 1
             IF i > n THEN a$ = "Expected GOSUB/sub-name": GOTO errmes
             a2$ = getelement$(a$, i): i = i + 1
             onkeyid = onkeyid + 1
-            PRINT #12, str2$(onkeyid) + ",";
+            PrintToBuffer 12, str2$(onkeyid) + ",", -1
 
             IF a2$ = "GOSUB" THEN
                 IF i > n THEN a$ = "Expected linenumber/label": GOTO errmes
                 a2$ = getelement$(ca$, i): i = i + 1
 
-                PRINT #12, "0);"
+                PrintToBuffer 12, "0);", 0
 
                 IF validlabel(a2$) = 0 THEN a$ = "Invalid label": GOTO errmes
 
@@ -6902,16 +6902,16 @@ DO
                 END IF 'x
                 l$ = l$ + "GOSUB" + sp + tlayout$
 
-                PRINT #28, "if(key_event_id==" + str2$(onkeyid) + ")goto LABEL_" + a2$ + ";"
+                PrintToBuffer 28, "if(key_event_id==" + str2$(onkeyid) + ")goto LABEL_" + a2$ + ";", 0
 
-                PRINT #27, "case " + str2$(onkeyid) + ":"
-                PRINT #27, "key_event_occurred++;"
-                PRINT #27, "key_event_id=" + str2$(onkeyid) + ";"
-                PRINT #27, "key_event_occurred++;"
-                PRINT #27, "return_point[next_return_point++]=0;"
-                PRINT #27, "if (next_return_point>=return_points) more_return_points();"
-                PRINT #27, "QBMAIN(NULL);"
-                PRINT #27, "break;"
+                PrintToBuffer 27, "case " + str2$(onkeyid) + ":", 0
+                PrintToBuffer 27, "key_event_occurred++;", 0
+                PrintToBuffer 27, "key_event_id=" + str2$(onkeyid) + ";", 0
+                PrintToBuffer 27, "key_event_occurred++;", 0
+                PrintToBuffer 27, "return_point[next_return_point++]=0;", 0
+                PrintToBuffer 27, "if (next_return_point>=return_points) more_return_points();", 0
+                PrintToBuffer 27, "QBMAIN(NULL);", 0
+                PrintToBuffer 27, "break;", 0
 
                 IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
                 layoutdone = 1
@@ -6931,16 +6931,16 @@ DO
 
                 l$ = l$ + RTRIM$(id.cn)
 
-                PRINT #27, "case " + str2$(onkeyid) + ":"
-                PRINT #27, RTRIM$(id.callname) + "(";
+                PrintToBuffer 27, "case " + str2$(onkeyid) + ":", 0
+                PrintToBuffer 27, RTRIM$(id.callname) + "(", -1
 
                 IF id.args > 1 THEN a$ = "SUB requires more than one argument": GOTO errmes
 
                 IF i > n THEN
 
                     IF id.args = 1 THEN a$ = "Expected argument after SUB": GOTO errmes
-                    PRINT #12, "0);"
-                    PRINT #27, ");"
+                    PrintToBuffer 12, "0);", 0
+                    PrintToBuffer 27, ");", 0
 
                 ELSE
 
@@ -6955,7 +6955,7 @@ DO
                     IF B = 64 THEN ct$ = "int64"
                     IF t AND ISOFFSET THEN ct$ = "ptrszint"
                     IF t AND ISUNSIGNED THEN ct$ = "u" + ct$
-                    PRINT #27, "(" + ct$ + "*)&i64);"
+                    PrintToBuffer 27, "(" + ct$ + "*)&i64);", 0
 
                     e$ = getelements$(ca$, i, n)
                     e$ = fixoperationorder$(e$)
@@ -6963,11 +6963,11 @@ DO
                     l$ = l$ + sp + tlayout$
                     e$ = evaluatetotyp(e$, INTEGER64TYPE - ISPOINTER)
                     IF Error_Happened THEN GOTO errmes
-                    PRINT #12, e$ + ");"
+                    PrintToBuffer 12, e$ + ");", 0
 
                 END IF
 
-                PRINT #27, "break;"
+                PrintToBuffer 27, "break;", 0
                 IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
                 layoutdone = 1
                 GOTO finishedline
@@ -7082,8 +7082,8 @@ DO
             oldsubfunc$ = subfunc$
             subfunc$ = ""
             defdatahandle = 18
-            CloseBuffer 13: OPEN tmpdir$ + "maindata.txt" , "APPEND", 13
-            CloseBuffer 19: OPEN tmpdir$ + "mainfree.txt" , "APPEND", 19
+            CloseBuffer 13: OpenBuffer tmpdir$ + "maindata.txt", "APPEND", 13
+            CloseBuffer 19: OpenBuffer tmpdir$ + "mainfree.txt", "APPEND", 19
 
             'use 'try' to locate the variable (if it already exists)
             n2$ = n$ + s$ + ts$ 'note: either ts$ or s$ will exist unless it is a UDT
@@ -7150,8 +7150,8 @@ DO
             'switch back to sub/func
             subfunc$ = oldsubfunc$
             defdatahandle = 13
-            CloseBuffer 13: OPEN tmpdir$ + "data" + str2$(subfuncn) + ".txt" , "APPEND", 13
-            CloseBuffer 19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" , "APPEND", 19
+            CloseBuffer 13: OpenBuffer tmpdir$ + "data" + str2$(subfuncn) + ".txt", "APPEND", 13
+            CloseBuffer 19: OpenBuffer tmpdir$ + "free" + str2$(subfuncn) + ".txt", "APPEND", 19
 
             IF getelement$(a$, i) = "," THEN i = i + 1: l$ = l$ + sp2 + ",": GOTO subfuncshr
             IF getelement$(a$, i) <> "" THEN a$ = "Expected ,": GOTO errmes
@@ -7171,7 +7171,7 @@ DO
 
                 IF LEN(subfunc) = 0 THEN a$ = "EXIT " + secondelement$ + " must be used within a SUB/FUNCTION": GOTO errmes
 
-                PRINT #12, "goto exit_subfunc;"
+                PrintToBuffer 12, "goto exit_subfunc;", 0
                 l$ = firstelement$ + sp + secondelement$
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 GOTO finishedline
@@ -7259,33 +7259,33 @@ DO
             IF position$ = "1" THEN
                 IF useposition THEN l$ = l$ + sp2 + "," + sp + "1" + sp2 + ")" + sp + "=" ELSE l$ = l$ + sp2 + ")" + sp + "="
 
-                PRINT #12, "tqbs=" + stringvariable$ + "; if (!new_error){"
+                PrintToBuffer 12, "tqbs=" + stringvariable$ + "; if (!new_error){", 0
                 e$ = fixoperationorder$(expression$)
                 IF Error_Happened THEN GOTO errmes
                 l$ = l$ + sp + tlayout$
                 e$ = evaluatetotyp(e$, 32&)
                 IF Error_Happened THEN GOTO errmes
-                PRINT #12, "tmp_long=" + e$ + "; if (!new_error){"
-                PRINT #12, "if (tqbs->len){tqbs->chr[0]=tmp_long;}else{error(5);}"
-                PRINT #12, "}}"
+                PrintToBuffer 12, "tmp_long=" + e$ + "; if (!new_error){", 0
+                PrintToBuffer 12, "if (tqbs->len){tqbs->chr[0]=tmp_long;}else{error(5);}", 0
+                PrintToBuffer 12, "}}", 0
 
             ELSE
 
-                PRINT #12, "tqbs=" + stringvariable$ + "; if (!new_error){"
+                PrintToBuffer 12, "tqbs=" + stringvariable$ + "; if (!new_error){", 0
                 e$ = fixoperationorder$(position$)
                 IF Error_Happened THEN GOTO errmes
                 l$ = l$ + sp2 + "," + sp + tlayout$ + sp2 + ")" + sp + "="
                 e$ = evaluatetotyp(e$, 32&)
                 IF Error_Happened THEN GOTO errmes
-                PRINT #12, "tmp_fileno=" + e$ + "; if (!new_error){"
+                PrintToBuffer 12, "tmp_fileno=" + e$ + "; if (!new_error){", 0
                 e$ = fixoperationorder$(expression$)
                 IF Error_Happened THEN GOTO errmes
                 l$ = l$ + sp + tlayout$
                 e$ = evaluatetotyp(e$, 32&)
                 IF Error_Happened THEN GOTO errmes
-                PRINT #12, "tmp_long=" + e$ + "; if (!new_error){"
-                PRINT #12, "if ((tmp_fileno>0)&&(tmp_fileno<=tqbs->len)){tqbs->chr[tmp_fileno-1]=tmp_long;}else{error(5);}"
-                PRINT #12, "}}}"
+                PrintToBuffer 12, "tmp_long=" + e$ + "; if (!new_error){", 0
+                PrintToBuffer 12, "if ((tmp_fileno>0)&&(tmp_fileno<=tqbs->len)){tqbs->chr[tmp_fileno-1]=tmp_long;}else{error(5);}", 0
+                PrintToBuffer 12, "}}}", 0
 
             END IF
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
@@ -7365,9 +7365,9 @@ DO
                 l$ = l$ + sp2 + "," + sp + tlayout$
                 length$ = evaluatetotyp(length$, 32&)
                 IF Error_Happened THEN GOTO errmes
-                PRINT #12, "sub_mid(" + stringvariable$ + "," + start$ + "," + length$ + "," + stringexpression$ + ",1);"
+                PrintToBuffer 12, "sub_mid(" + stringvariable$ + "," + start$ + "," + length$ + "," + stringexpression$ + ",1);", 0
             ELSE
-                PRINT #12, "sub_mid(" + stringvariable$ + "," + start$ + ",0," + stringexpression$ + ",0);"
+                PrintToBuffer 12, "sub_mid(" + stringvariable$ + "," + start$ + ",0," + stringexpression$ + ",0);", 0
             END IF
 
             l$ = l$ + sp2 + ")" + sp + "=" + sp + l2$
@@ -7398,67 +7398,67 @@ DO
                 IF id.arraytype AND ISUDT THEN
                     bytesperelement$ = str2(udtxsize(id.arraytype AND 511) \ 8)
                 END IF
-                PRINT #12, "if (" + n$ + "[2]&1){" 'array is defined
-                PRINT #12, "if (" + n$ + "[2]&2){" 'array is static
+                PrintToBuffer 12, "if (" + n$ + "[2]&1){", 0 'array is defined
+                PrintToBuffer 12, "if (" + n$ + "[2]&2){", 0 'array is static
                 IF (id.arraytype AND ISSTRING) <> 0 AND (id.arraytype AND ISFIXEDLENGTH) = 0 THEN
-                    PRINT #12, "tmp_long=";
+                    PrintToBuffer 12, "tmp_long=", -1
                     FOR i2 = 1 TO ABS(id.arrayelements)
-                        IF i2 <> 1 THEN PRINT #12, "*";
-                        PRINT #12, n$ + "[" + str2(i2 * 4 - 4 + 5) + "]";
+                        IF i2 <> 1 THEN PrintToBuffer 12, "*", -1
+                        PrintToBuffer 12, n$ + "[" + str2(i2 * 4 - 4 + 5) + "]", -1
                     NEXT
-                    PRINT #12, ";"
-                    PRINT #12, "while(tmp_long--){"
-                    PRINT #12, "((qbs*)(((uint64*)(" + n$ + "[0]))[tmp_long]))->len=0;"
-                    PRINT #12, "}"
+                    PrintToBuffer 12, ";", 0
+                    PrintToBuffer 12, "while(tmp_long--){", 0
+                    PrintToBuffer 12, "((qbs*)(((uint64*)(" + n$ + "[0]))[tmp_long]))->len=0;", 0
+                    PrintToBuffer 12, "}", 0
                 ELSE
                     'numeric
                     'clear array
-                    PRINT #12, "memset((void*)(" + n$ + "[0]),0,";
+                    PrintToBuffer 12, "memset((void*)(" + n$ + "[0]),0,", -1
                     FOR i2 = 1 TO ABS(id.arrayelements)
-                        IF i2 <> 1 THEN PRINT #12, "*";
-                        PRINT #12, n$ + "[" + str2(i2 * 4 - 4 + 5) + "]";
+                        IF i2 <> 1 THEN PrintToBuffer 12, "*", -1
+                        PrintToBuffer 12, n$ + "[" + str2(i2 * 4 - 4 + 5) + "]", -1
                     NEXT
-                    PRINT #12, "*" + bytesperelement$ + ");"
+                    PrintToBuffer 12, "*" + bytesperelement$ + ");", 0
                 END IF
-                PRINT #12, "}else{" 'array is dynamic
+                PrintToBuffer 12, "}else{", 0 'array is dynamic
                 '1. free memory & any allocated strings
                 IF (id.arraytype AND ISSTRING) <> 0 AND (id.arraytype AND ISFIXEDLENGTH) = 0 THEN
                     'free strings
-                    PRINT #12, "tmp_long=";
+                    PrintToBuffer 12, "tmp_long=", -1
                     FOR i2 = 1 TO ABS(id.arrayelements)
-                        IF i2 <> 1 THEN PRINT #12, "*";
-                        PRINT #12, n$ + "[" + str2(i2 * 4 - 4 + 5) + "]";
+                        IF i2 <> 1 THEN PrintToBuffer 12, "*", -1
+                        PrintToBuffer 12, n$ + "[" + str2(i2 * 4 - 4 + 5) + "]", -1
                     NEXT
-                    PRINT #12, ";"
-                    PRINT #12, "while(tmp_long--){"
-                    PRINT #12, "qbs_free((qbs*)(((uint64*)(" + n$ + "[0]))[tmp_long]));"
-                    PRINT #12, "}"
+                    PrintToBuffer 12, ";", 0
+                    PrintToBuffer 12, "while(tmp_long--){", 0
+                    PrintToBuffer 12, "qbs_free((qbs*)(((uint64*)(" + n$ + "[0]))[tmp_long]));", 0
+                    PrintToBuffer 12, "}", 0
                     'free memory
-                    PRINT #12, "free((void*)(" + n$ + "[0]));"
+                    PrintToBuffer 12, "free((void*)(" + n$ + "[0]));", 0
                 ELSE
                     'free memory
-                    PRINT #12, "if (" + n$ + "[2]&4){" 'cmem array
-                    PRINT #12, "cmem_dynamic_free((uint8*)(" + n$ + "[0]));"
-                    PRINT #12, "}else{" 'non-cmem array
-                    PRINT #12, "free((void*)(" + n$ + "[0]));"
-                    PRINT #12, "}"
+                    PrintToBuffer 12, "if (" + n$ + "[2]&4){", 0 'cmem array
+                    PrintToBuffer 12, "cmem_dynamic_free((uint8*)(" + n$ + "[0]));", 0
+                    PrintToBuffer 12, "}else{", 0 'non-cmem array
+                    PrintToBuffer 12, "free((void*)(" + n$ + "[0]));", 0
+                    PrintToBuffer 12, "}", 0
                 END IF
                 '2. set array (and its elements) as undefined
-                PRINT #12, n$ + "[2]^=1;" 'remove defined flag, keeping other flags (such as cmem)
+                PrintToBuffer 12, n$ + "[2]^=1;", 0 'remove defined flag, keeping other flags (such as cmem)
                 'set dimensions as undefined
                 FOR i2 = 1 TO ABS(id.arrayelements)
                     B = i2 * 4
-                    PRINT #12, n$ + "[" + str2(B) + "]=2147483647;" 'base
-                    PRINT #12, n$ + "[" + str2(B + 1) + "]=0;" 'num. index
-                    PRINT #12, n$ + "[" + str2(B + 2) + "]=0;" 'multiplier
+                    PrintToBuffer 12, n$ + "[" + str2(B) + "]=2147483647;", 0 'base
+                    PrintToBuffer 12, n$ + "[" + str2(B + 1) + "]=0;", 0 'num. index
+                    PrintToBuffer 12, n$ + "[" + str2(B + 2) + "]=0;", 0 'multiplier
                 NEXT
                 IF (id.arraytype AND ISSTRING) <> 0 AND (id.arraytype AND ISFIXEDLENGTH) = 0 THEN
-                    PRINT #12, n$ + "[0]=(ptrszint)&nothingstring;"
+                    PrintToBuffer 12, n$ + "[0]=(ptrszint)&nothingstring;", 0
                 ELSE
-                    PRINT #12, n$ + "[0]=(ptrszint)nothingvalue;"
+                    PrintToBuffer 12, n$ + "[0]=(ptrszint)nothingvalue;", 0
                 END IF
-                PRINT #12, "}" 'static/dynamic
-                PRINT #12, "}" 'array is defined
+                PrintToBuffer 12, "}", 0 'static/dynamic
+                PrintToBuffer 12, "}", 0 'array is defined
                 IF clearerasereturn = 1 THEN clearerasereturn = 0: GOTO clearerasereturned
                 GOTO erasedarray
             END IF
@@ -7870,19 +7870,19 @@ DO
                         IF x = 0 THEN x = idn + 1
 
                         'note: the following code only adds include directives, everything else is defered
-                        OPEN tmpdir$ + "chain.txt" , "APPEND", 22
+                        OpenBuffer tmpdir$ + "chain.txt", "APPEND", 22
                         'include directive
-                        PRINT #22, "#include " + CHR$(34) + "chain" + str2$(x) + ".txt" + CHR$(34)
+                        PrintToBuffer 22, "#include " + CHR$(34) + "chain" + str2$(x) + ".txt" + CHR$(34), 0
                         CloseBuffer 22
                         'create/clear include file
-                        OPEN tmpdir$ + "chain" + str2$(x) + ".txt" , "OUTPUT", 22: CloseBuffer 22
+                        OpenBuffer tmpdir$ + "chain" + str2$(x) + ".txt", "OUTPUT", 22: CloseBuffer 22
 
-                        OPEN tmpdir$ + "inpchain.txt" , "APPEND", 22
+                        OpenBuffer tmpdir$ + "inpchain.txt", "APPEND", 22
                         'include directive
-                        PRINT #22, "#include " + CHR$(34) + "inpchain" + str2$(x) + ".txt" + CHR$(34)
+                        PrintToBuffer 22, "#include " + CHR$(34) + "inpchain" + str2$(x) + ".txt" + CHR$(34), 0
                         CloseBuffer 22
                         'create/clear include file
-                        OPEN tmpdir$ + "inpchain" + str2$(x) + ".txt" , "OUTPUT", 22: CloseBuffer 22
+                        OpenBuffer tmpdir$ + "inpchain" + str2$(x) + ".txt", "OUTPUT", 22: CloseBuffer 22
 
                         'note: elements$="?"
                         IF x <> idn + 1 THEN GOTO skipdim 'array already exists
@@ -7940,11 +7940,11 @@ DO
 
                     'switch output from main.txt to chain.txt
                     CloseBuffer 12
-                    OPEN tmpdir$ + "chain.txt" , "APPEND", 12
+                    OpenBuffer tmpdir$ + "chain.txt", "APPEND", 12
                     l2$ = tlayout$
 
-                    PRINT #12, "int32val=1;" 'simple variable
-                    PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
+                    PrintToBuffer 12, "int32val=1;", 0 'simple variable
+                    PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0
 
                     t = id.t
                     bits = t AND 511
@@ -7953,15 +7953,15 @@ DO
                         IF t AND ISFIXEDLENGTH THEN
                             bits = id.tsize * 8
                         ELSE
-                            PRINT #12, "int64val=__STRING_" + RTRIM$(id.n) + "->len*8;"
+                            PrintToBuffer 12, "int64val=__STRING_" + RTRIM$(id.n) + "->len*8;", 0
                             bits = 0
                         END IF
                     END IF
 
                     IF bits THEN
-                        PRINT #12, "int64val=" + str2$(bits) + ";" 'size in bits
+                        PrintToBuffer 12, "int64val=" + str2$(bits) + ";", 0 'size in bits
                     END IF
-                    PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);"
+                    PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0
 
                     'put the variable
                     e$ = RTRIM$(id.n)
@@ -7977,25 +7977,25 @@ DO
                     e$ = evaluatetotyp(fixoperationorder$(e$), -4)
                     IF Error_Happened THEN GOTO errmes
 
-                    PRINT #12, "sub_put(FF,NULL," + e$ + ",0);"
+                    PrintToBuffer 12, "sub_put(FF,NULL," + e$ + ",0);", 0
 
                     tlayout$ = l2$
                     'revert output to main.txt
                     CloseBuffer 12
-                    OPEN tmpdir$ + "main.txt" , "APPEND", 12
+                    OpenBuffer tmpdir$ + "main.txt", "APPEND", 12
 
 
                     'INPCHAIN.TXT (load)
 
                     'switch output from main.txt to chain.txt
                     CloseBuffer 12
-                    OPEN tmpdir$ + "inpchain.txt" , "APPEND", 12
+                    OpenBuffer tmpdir$ + "inpchain.txt", "APPEND", 12
                     l2$ = tlayout$
 
 
-                    PRINT #12, "if (int32val==1){"
+                    PrintToBuffer 12, "if (int32val==1){", 0
                     'get the size in bits
-                    PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);"
+                    PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0
                     '***assume correct size***
 
                     e$ = RTRIM$(id.n)
@@ -8011,23 +8011,23 @@ DO
 
                     IF t AND ISSTRING THEN
                         IF (t AND ISFIXEDLENGTH) = 0 THEN
-                            PRINT #12, "tqbs=qbs_new(int64val>>3,1);"
-                            PRINT #12, "qbs_set(__STRING_" + RTRIM$(id.n) + ",tqbs);"
+                            PrintToBuffer 12, "tqbs=qbs_new(int64val>>3,1);", 0
+                            PrintToBuffer 12, "qbs_set(__STRING_" + RTRIM$(id.n) + ",tqbs);", 0
                             'now that the string is the correct size, the following GET command will work correctly...
                         END IF
                     END IF
 
                     e$ = evaluatetotyp(fixoperationorder$(e$), -4)
                     IF Error_Happened THEN GOTO errmes
-                    PRINT #12, "sub_get(FF,NULL," + e$ + ",0);"
+                    PrintToBuffer 12, "sub_get(FF,NULL," + e$ + ",0);", 0
 
-                    PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);" 'get next command
-                    PRINT #12, "}"
+                    PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0 'get next command
+                    PrintToBuffer 12, "}", 0
 
                     tlayout$ = l2$
                     'revert output to main.txt
                     CloseBuffer 12
-                    OPEN tmpdir$ + "main.txt" , "APPEND", 12
+                    OpenBuffer tmpdir$ + "main.txt", "APPEND", 12
 
                     use_global_byte_elements = 0
 
@@ -8121,7 +8121,7 @@ DO
 
             IF LEN(l$) THEN l$ = l$ + sp + tlayout$ ELSE l$ = tlayout$
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
-            PRINT #12, "goto LABEL_" + a2$ + ";"
+            PrintToBuffer 12, "goto LABEL_" + a2$ + ";", 0
             GOTO finishedline
         END IF
     END IF
@@ -8133,15 +8133,15 @@ DO
             FOR i = controllevel TO 1 STEP -1
                 t = controltype(i)
                 IF t = 2 THEN 'for...next
-                    PRINT #12, "goto fornext_continue_" + str2$(controlid(i)) + ";"
+                    PrintToBuffer 12, "goto fornext_continue_" + str2$(controlid(i)) + ";", 0
                     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                     GOTO finishedline
                 ELSEIF t = 3 OR t = 4 THEN 'do...loop
-                    PRINT #12, "goto dl_continue_" + str2$(controlid(i)) + ";"
+                    PrintToBuffer 12, "goto dl_continue_" + str2$(controlid(i)) + ";", 0
                     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                     GOTO finishedline
                 ELSEIF t = 5 THEN 'while...wend
-                    PRINT #12, "goto ww_continue_" + str2$(controlid(i)) + ";"
+                    PrintToBuffer 12, "goto ww_continue_" + str2$(controlid(i)) + ";", 0
                     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                     GOTO finishedline
                 END IF
@@ -8154,12 +8154,12 @@ DO
         l$ = "RUN"
         IF n = 1 THEN
             'no parameters
-            PRINT #12, "sub_run_init();" 'note: called first to free up screen-locked image handles
-            PRINT #12, "sub_clear(NULL,NULL,NULL,NULL);" 'use functionality of CLEAR
+            PrintToBuffer 12, "sub_run_init();", 0 'note: called first to free up screen-locked image handles
+            PrintToBuffer 12, "sub_clear(NULL,NULL,NULL,NULL);", 0 'use functionality of CLEAR
             IF LEN(subfunc$) THEN
-                PRINT #12, "QBMAIN(NULL);"
+                PrintToBuffer 12, "QBMAIN(NULL);", 0
             ELSE
-                PRINT #12, "goto S_0;"
+                PrintToBuffer 12, "goto S_0;", 0
             END IF
         ELSE
             'parameter passed
@@ -8203,21 +8203,21 @@ DO
                 END IF 'x
 
                 l$ = l$ + sp + tlayout$
-                PRINT #12, "sub_run_init();" 'note: called first to free up screen-locked image handles
-                PRINT #12, "sub_clear(NULL,NULL,NULL,NULL);" 'use functionality of CLEAR
+                PrintToBuffer 12, "sub_run_init();", 0 'note: called first to free up screen-locked image handles
+                PrintToBuffer 12, "sub_clear(NULL,NULL,NULL,NULL);", 0 'use functionality of CLEAR
                 IF LEN(subfunc$) THEN
-                    PRINT #21, "if (run_from_line==" + str2(nextrunlineindex) + "){run_from_line=0;goto LABEL_" + lbl$ + ";}"
-                    PRINT #12, "run_from_line=" + str2(nextrunlineindex) + ";"
+                    PrintToBuffer 21, "if (run_from_line==" + str2(nextrunlineindex) + "){run_from_line=0;goto LABEL_" + lbl$ + ";}", 0
+                    PrintToBuffer 12, "run_from_line=" + str2(nextrunlineindex) + ";", 0
                     nextrunlineindex = nextrunlineindex + 1
-                    PRINT #12, "QBMAIN(NULL);"
+                    PrintToBuffer 12, "QBMAIN(NULL);", 0
                 ELSE
-                    PRINT #12, "goto LABEL_" + lbl$ + ";"
+                    PrintToBuffer 12, "goto LABEL_" + lbl$ + ";", 0
                 END IF
             ELSE
                 'assume it's a string containing a filename to execute
                 e$ = evaluatetotyp(e$, ISSTRING)
                 IF Error_Happened THEN GOTO errmes
-                PRINT #12, "sub_run(" + e$ + ");"
+                PrintToBuffer 12, "sub_run(" + e$ + ");", 0
                 l$ = l$ + sp + l2$
             END IF 'isstring
         END IF 'n=1
@@ -8243,8 +8243,8 @@ DO
                 thisincname$ = MID$(incname$(inclevel), LEN(thisincname$) + 1)
                 inclinenump$ = inclinenump$ + "," + CHR$(34) + thisincname$ + CHR$(34)
             END IF
-            PRINT #12, "if(qbevent){evnt(" + str2$(linenumber) + inclinenump$ + ");}" 'non-resumable error check (cannot exit without handling errors)
-            PRINT #12, "exit_code=" + e$ + ";"
+            PrintToBuffer 12, "if(qbevent){evnt(" + str2$(linenumber) + inclinenump$ + ");}", 0 'non-resumable error check (cannot exit without handling errors)
+            PrintToBuffer 12, "exit_code=" + e$ + ";", 0
             l$ = l$ + sp + l2$
         END IF
         xend
@@ -8266,15 +8266,15 @@ DO
                 thisincname$ = MID$(incname$(inclevel), LEN(thisincname$) + 1)
                 inclinenump$ = inclinenump$ + "," + CHR$(34) + thisincname$ + CHR$(34)
             END IF
-            PRINT #12, "if(qbevent){evnt(" + str2$(linenumber) + inclinenump$ + ");}" 'non-resumable error check (cannot exit without handling errors)
-            PRINT #12, "exit_code=" + e$ + ";"
+            PrintToBuffer 12, "if(qbevent){evnt(" + str2$(linenumber) + inclinenump$ + ");}", 0 'non-resumable error check (cannot exit without handling errors)
+            PrintToBuffer 12, "exit_code=" + e$ + ";", 0
             l$ = l$ + sp + l2$
         END IF
 
 
-        PRINT #12, "if (sub_gl_called) error(271);"
-        PRINT #12, "close_program=1;"
-        PRINT #12, "end();"
+        PrintToBuffer 12, "if (sub_gl_called) error(271);", 0
+        PrintToBuffer 12, "close_program=1;", 0
+        PrintToBuffer 12, "end();", 0
         layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
         GOTO finishedline
     END IF
@@ -8292,8 +8292,8 @@ DO
                 'note: this value is currently ignored but evaluated for checking reasons
             END IF
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
-            PRINT #12, "close_program=1;"
-            PRINT #12, "end();"
+            PrintToBuffer 12, "close_program=1;", 0
+            PrintToBuffer 12, "end();", 0
             GOTO finishedline
         END IF
     END IF
@@ -8310,7 +8310,7 @@ DO
     IF n >= 1 THEN
         IF firstelement$ = "RETURN" THEN
             IF n = 1 THEN
-                PRINT #12, "#include " + CHR$(34) + "ret" + str2$(subfuncn) + ".txt" + CHR$(34)
+                PrintToBuffer 12, "#include " + CHR$(34) + "ret" + str2$(subfuncn) + ".txt" + CHR$(34), 0
                 l$ = "RETURN"
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 GOTO finishedline
@@ -8318,8 +8318,8 @@ DO
                 'label/linenumber follows
                 IF subfuncn <> 0 THEN a$ = "RETURN linelabel/linenumber invalid within a SUB/FUNCTION": GOTO errmes
                 IF n > 2 THEN a$ = "Expected linelabel/linenumber after RETURN": GOTO errmes
-                PRINT #12, "if (!next_return_point) error(3);" 'check return point available
-                PRINT #12, "next_return_point--;" 'destroy return point
+                PrintToBuffer 12, "if (!next_return_point) error(3);", 0 'check return point available
+                PrintToBuffer 12, "next_return_point--;", 0 'destroy return point
                 a2$ = getelement$(ca$, 2)
                 IF validlabel(a2$) = 0 THEN a$ = "Invalid label!": GOTO errmes
 
@@ -8348,7 +8348,7 @@ DO
                     Labels(r).Error_Line = linenumber
                 END IF 'x
 
-                PRINT #12, "goto LABEL_" + a2$ + ";"
+                PrintToBuffer 12, "goto LABEL_" + a2$ + ";", 0
                 l$ = "RETURN" + sp + tlayout$
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 GOTO finishedline
@@ -8363,7 +8363,7 @@ DO
                 resumeprev:
 
 
-                PRINT #12, "if (!error_handling){error(20);}else{error_retry=1; qbevent=1; error_handling=0; error_err=0; return;}"
+                PrintToBuffer 12, "if (!error_handling){error(20);}else{error_retry=1; qbevent=1; error_handling=0; error_err=0; return;}", 0
 
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 GOTO finishedline
@@ -8373,7 +8373,7 @@ DO
             IF UCASE$(s$) = "NEXT" THEN
 
 
-                PRINT #12, "if (!error_handling){error(20);}else{error_handling=0; error_err=0; return;}"
+                PrintToBuffer 12, "if (!error_handling){error(20);}else{error_handling=0; error_err=0; return;}", 0
 
                 l$ = l$ + sp + "NEXT"
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
@@ -8409,7 +8409,7 @@ DO
 
             l$ = l$ + sp + tlayout$
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
-            PRINT #12, "if (!error_handling){error(20);}else{error_handling=0; error_err=0; goto LABEL_" + s$ + ";}"
+            PrintToBuffer 12, "if (!error_handling){error(20);}else{error_handling=0; error_err=0; goto LABEL_" + s$ + ";}", 0
             GOTO finishedline
         END IF
     END IF
@@ -8419,7 +8419,7 @@ DO
             l$ = "ON" + sp + "ERROR" + sp + "GOTO"
             lbl$ = getelement$(ca$, 4)
             IF lbl$ = "0" THEN
-                PRINT #12, "error_goto_line=0;"
+                PrintToBuffer 12, "error_goto_line=0;", 0
                 l$ = l$ + sp + "0"
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 GOTO finishedline
@@ -8458,8 +8458,8 @@ DO
             l$ = l$ + sp + tlayout$
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             errorlabels = errorlabels + 1
-            PRINT #12, "error_goto_line=" + str2(errorlabels) + ";"
-            PRINT #14, "if (error_goto_line==" + str2(errorlabels) + "){error_handling=1; goto LABEL_" + lbl$ + ";}"
+            PrintToBuffer 12, "error_goto_line=" + str2(errorlabels) + ";", 0
+            PrintToBuffer 14, "if (error_goto_line==" + str2(errorlabels) + "){error_handling=1; goto LABEL_" + lbl$ + ";}", 0
             GOTO finishedline
         END IF
     END IF
@@ -8468,7 +8468,7 @@ DO
         IF firstelement$ = "RESTORE" THEN
             l$ = "RESTORE"
             IF n = 1 THEN
-                PRINT #12, "data_offset=0;"
+                PrintToBuffer 12, "data_offset=0;", 0
             ELSE
                 IF n > 2 THEN a$ = "Syntax error": GOTO errmes
                 lbl$ = getelement$(ca$, 2)
@@ -8497,7 +8497,7 @@ DO
                 END IF 'x
 
                 l$ = l$ + sp + tlayout$
-                PRINT #12, "data_offset=data_at_LABEL_" + lbl$ + ";"
+                PrintToBuffer 12, "data_offset=data_at_LABEL_" + lbl$ + ";", 0
             END IF
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             GOTO finishedline
@@ -8551,13 +8551,13 @@ DO
             '            IF typ AND ISREFERENCE THEN e$ = refer(e$, typ, 0)
 
 
-            'PRINT #12, blkoffs$ '???
+            'PrintToBuffer 12, blkoffs$ '???
 
             e$ = fixoperationorder$(offs$): IF Error_Happened THEN GOTO errmes
             l$ = l$ + sp2 + "," + sp + tlayout$
             e$ = evaluatetotyp(e$, OFFSETTYPE - ISPOINTER): IF Error_Happened THEN GOTO errmes
             offs$ = e$
-            'PRINT #12, e$ '???
+            'PrintToBuffer 12, e$ '???
 
             e$ = fixoperationorder$(var$): IF Error_Happened THEN GOTO errmes
             l$ = l$ + sp2 + "," + sp + tlayout$
@@ -8565,8 +8565,8 @@ DO
             varoffs$ = evaluatetotyp(e$, -6): IF Error_Happened THEN GOTO errmes
 
 
-            'PRINT #12, varoffs$ '???
-            'PRINT #12, varsize$ '???
+            'PrintToBuffer 12, varoffs$ '???
+            'PrintToBuffer 12, varsize$ '???
 
             'what do we do next
             'need to know offset of variable and its size
@@ -8581,30 +8581,30 @@ DO
             IF NoChecks THEN
                 'fast version:
                 IF s THEN
-                    PRINT #12, "*(" + st$ + "*)" + varoffs$ + "=*(" + st$ + "*)(" + offs$ + ");"
+                    PrintToBuffer 12, "*(" + st$ + "*)" + varoffs$ + "=*(" + st$ + "*)(" + offs$ + ");", 0
                 ELSE
-                    PRINT #12, "memmove(" + varoffs$ + ",(void*)" + offs$ + "," + varsize$ + ");"
+                    PrintToBuffer 12, "memmove(" + varoffs$ + ",(void*)" + offs$ + "," + varsize$ + ");", 0
                 END IF
             ELSE
                 'safe version:
-                PRINT #12, "tmp_long=" + offs$ + ";"
+                PrintToBuffer 12, "tmp_long=" + offs$ + ";", 0
                 'is mem block init?
-                PRINT #12, "if ( ((mem_block*)(" + blkoffs$ + "))->lock_offset ){"
+                PrintToBuffer 12, "if ( ((mem_block*)(" + blkoffs$ + "))->lock_offset ){", 0
                 'are region and id valid?
-                PRINT #12, "if ("
-                PRINT #12, "tmp_long < ((mem_block*)(" + blkoffs$ + "))->offset  ||"
-                PRINT #12, "(tmp_long+(" + varsize$ + ")) > ( ((mem_block*)(" + blkoffs$ + "))->offset + ((mem_block*)(" + blkoffs$ + "))->size)  ||"
-                PRINT #12, "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id  ){"
+                PrintToBuffer 12, "if (", 0
+                PrintToBuffer 12, "tmp_long < ((mem_block*)(" + blkoffs$ + "))->offset  ||", 0
+                PrintToBuffer 12, "(tmp_long+(" + varsize$ + ")) > ( ((mem_block*)(" + blkoffs$ + "))->offset + ((mem_block*)(" + blkoffs$ + "))->size)  ||", 0
+                PrintToBuffer 12, "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id  ){", 0
                 'diagnose error
-                PRINT #12, "if (" + "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id" + ") error(308); else error(300);"
-                PRINT #12, "}else{"
+                PrintToBuffer 12, "if (" + "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id" + ") error(308); else error(300);", 0
+                PrintToBuffer 12, "}else{", 0
                 IF s THEN
-                    PRINT #12, "*(" + st$ + "*)" + varoffs$ + "=*(" + st$ + "*)tmp_long;"
+                    PrintToBuffer 12, "*(" + st$ + "*)" + varoffs$ + "=*(" + st$ + "*)tmp_long;", 0
                 ELSE
-                    PRINT #12, "memmove(" + varoffs$ + ",(void*)tmp_long," + varsize$ + ");"
+                    PrintToBuffer 12, "memmove(" + varoffs$ + ",(void*)tmp_long," + varsize$ + ");", 0
                 END IF
-                PRINT #12, "}"
-                PRINT #12, "}else error(309);"
+                PrintToBuffer 12, "}", 0
+                PrintToBuffer 12, "}else error(309);", 0
             END IF
 
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
@@ -8660,7 +8660,7 @@ DO
 
                 test$ = evaluate(e$, t): IF Error_Happened THEN GOTO errmes
                 IF (t AND ISREFERENCE) = 0 AND (t AND ISSTRING) THEN
-                    PRINT #12, "g_tmp_str=" + test$ + ";"
+                    PrintToBuffer 12, "g_tmp_str=" + test$ + ";", 0
                     varsize$ = "g_tmp_str->len"
                     varoffs$ = "g_tmp_str->chr"
                 ELSE
@@ -8678,30 +8678,30 @@ DO
                 IF NoChecks THEN
                     'fast version:
                     IF s THEN
-                        PRINT #12, "*(" + st$ + "*)(" + offs$ + ")=*(" + st$ + "*)" + varoffs$ + ";"
+                        PrintToBuffer 12, "*(" + st$ + "*)(" + offs$ + ")=*(" + st$ + "*)" + varoffs$ + ";", 0
                     ELSE
-                        PRINT #12, "memmove((void*)" + offs$ + "," + varoffs$ + "," + varsize$ + ");"
+                        PrintToBuffer 12, "memmove((void*)" + offs$ + "," + varoffs$ + "," + varsize$ + ");", 0
                     END IF
                 ELSE
                     'safe version:
-                    PRINT #12, "tmp_long=" + offs$ + ";"
+                    PrintToBuffer 12, "tmp_long=" + offs$ + ";", 0
                     'is mem block init?
-                    PRINT #12, "if ( ((mem_block*)(" + blkoffs$ + "))->lock_offset ){"
+                    PrintToBuffer 12, "if ( ((mem_block*)(" + blkoffs$ + "))->lock_offset ){", 0
                     'are region and id valid?
-                    PRINT #12, "if ("
-                    PRINT #12, "tmp_long < ((mem_block*)(" + blkoffs$ + "))->offset  ||"
-                    PRINT #12, "(tmp_long+(" + varsize$ + ")) > ( ((mem_block*)(" + blkoffs$ + "))->offset + ((mem_block*)(" + blkoffs$ + "))->size)  ||"
-                    PRINT #12, "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id  ){"
+                    PrintToBuffer 12, "if (", 0
+                    PrintToBuffer 12, "tmp_long < ((mem_block*)(" + blkoffs$ + "))->offset  ||", 0
+                    PrintToBuffer 12, "(tmp_long+(" + varsize$ + ")) > ( ((mem_block*)(" + blkoffs$ + "))->offset + ((mem_block*)(" + blkoffs$ + "))->size)  ||", 0
+                    PrintToBuffer 12, "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id  ){", 0
                     'diagnose error
-                    PRINT #12, "if (" + "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id" + ") error(308); else error(300);"
-                    PRINT #12, "}else{"
+                    PrintToBuffer 12, "if (" + "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id" + ") error(308); else error(300);", 0
+                    PrintToBuffer 12, "}else{", 0
                     IF s THEN
-                        PRINT #12, "*(" + st$ + "*)tmp_long=*(" + st$ + "*)" + varoffs$ + ";"
+                        PrintToBuffer 12, "*(" + st$ + "*)tmp_long=*(" + st$ + "*)" + varoffs$ + ";", 0
                     ELSE
-                        PRINT #12, "memmove((void*)tmp_long," + varoffs$ + "," + varsize$ + ");"
+                        PrintToBuffer 12, "memmove((void*)tmp_long," + varoffs$ + "," + varsize$ + ");", 0
                     END IF
-                    PRINT #12, "}"
-                    PRINT #12, "}else error(309);"
+                    PrintToBuffer 12, "}", 0
+                    PrintToBuffer 12, "}else error(309);", 0
                 END IF
 
             ELSE
@@ -8721,23 +8721,23 @@ DO
                 varsize$ = str2((t AND 511) \ 8)
                 IF NoChecks THEN
                     'fast version:
-                    PRINT #12, "*(" + st$ + "*)(" + offs$ + ")=" + e$ + ";"
+                    PrintToBuffer 12, "*(" + st$ + "*)(" + offs$ + ")=" + e$ + ";", 0
                 ELSE
                     'safe version:
-                    PRINT #12, "tmp_long=" + offs$ + ";"
+                    PrintToBuffer 12, "tmp_long=" + offs$ + ";", 0
                     'is mem block init?
-                    PRINT #12, "if ( ((mem_block*)(" + blkoffs$ + "))->lock_offset ){"
+                    PrintToBuffer 12, "if ( ((mem_block*)(" + blkoffs$ + "))->lock_offset ){", 0
                     'are region and id valid?
-                    PRINT #12, "if ("
-                    PRINT #12, "tmp_long < ((mem_block*)(" + blkoffs$ + "))->offset  ||"
-                    PRINT #12, "(tmp_long+(" + varsize$ + ")) > ( ((mem_block*)(" + blkoffs$ + "))->offset + ((mem_block*)(" + blkoffs$ + "))->size)  ||"
-                    PRINT #12, "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id  ){"
+                    PrintToBuffer 12, "if (", 0
+                    PrintToBuffer 12, "tmp_long < ((mem_block*)(" + blkoffs$ + "))->offset  ||", 0
+                    PrintToBuffer 12, "(tmp_long+(" + varsize$ + ")) > ( ((mem_block*)(" + blkoffs$ + "))->offset + ((mem_block*)(" + blkoffs$ + "))->size)  ||", 0
+                    PrintToBuffer 12, "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id  ){", 0
                     'diagnose error
-                    PRINT #12, "if (" + "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id" + ") error(308); else error(300);"
-                    PRINT #12, "}else{"
-                    PRINT #12, "*(" + st$ + "*)tmp_long=" + e$ + ";"
-                    PRINT #12, "}"
-                    PRINT #12, "}else error(309);"
+                    PrintToBuffer 12, "if (" + "((mem_lock*)((mem_block*)(" + blkoffs$ + "))->lock_offset)->id != ((mem_block*)(" + blkoffs$ + "))->lock_id" + ") error(308); else error(300);", 0
+                    PrintToBuffer 12, "}else{", 0
+                    PrintToBuffer 12, "*(" + st$ + "*)tmp_long=" + e$ + ";", 0
+                    PrintToBuffer 12, "}", 0
+                    PrintToBuffer 12, "}else error(309);", 0
                 END IF
 
             END IF
@@ -8801,7 +8801,7 @@ DO
                 l$ = l$ + sp2 + "," + sp + tlayout$
                 test$ = evaluate(e$, t)
                 IF (t AND ISREFERENCE) = 0 AND (t AND ISSTRING) THEN
-                    PRINT #12, "tmp_long=(ptrszint)" + test$ + ";"
+                    PrintToBuffer 12, "tmp_long=(ptrszint)" + test$ + ";", 0
                     varsize$ = "((qbs*)tmp_long)->len"
                     varoffs$ = "((qbs*)tmp_long)->chr"
                 ELSE
@@ -8810,9 +8810,9 @@ DO
                 END IF
 
                 IF NoChecks THEN
-                    PRINT #12, "sub__memfill_nochecks(" + offs$ + "," + bytes$ + ",(ptrszint)" + varoffs$ + "," + varsize$ + ");"
+                    PrintToBuffer 12, "sub__memfill_nochecks(" + offs$ + "," + bytes$ + ",(ptrszint)" + varoffs$ + "," + varsize$ + ");", 0
                 ELSE
-                    PRINT #12, "sub__memfill((mem_block*)" + blkoffs$ + "," + offs$ + "," + bytes$ + ",(ptrszint)" + varoffs$ + "," + varsize$ + ");"
+                    PrintToBuffer 12, "sub__memfill((mem_block*)" + blkoffs$ + "," + offs$ + "," + bytes$ + ",(ptrszint)" + varoffs$ + "," + varsize$ + ");", 0
                 END IF
 
             ELSE
@@ -8842,7 +8842,7 @@ DO
                 END IF
                 c$ = c$ + "("
                 IF NoChecks = 0 THEN c$ = c$ + "(mem_block*)" + blkoffs$ + ","
-                PRINT #12, c$ + offs$ + "," + bytes$ + "," + e$ + ");"
+                PrintToBuffer 12, c$ + offs$ + "," + bytes$ + "," + e$ + ");", 0
             END IF
 
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
@@ -8892,7 +8892,7 @@ DO
 
             IF n$ = "INTERRUPT" OR n$ = "INTERRUPTX" THEN 'assume CALL INTERRUPT[X] request
                 'print "CI: call interrupt command reached":sleep 1
-                IF n$ = "INTERRUPT" THEN PRINT #12, "call_interrupt("; ELSE PRINT #12, "call_interruptx(";
+                IF n$ = "INTERRUPT" THEN PrintToBuffer 12, "call_interrupt(", -1 ELSE PrintToBuffer 12, "call_interruptx(", -1
                 argn = 0
                 n = numelements(a$)
                 B = 0
@@ -8914,7 +8914,7 @@ DO
                             e$ = evaluatetotyp(e$, 64&)
                             IF Error_Happened THEN GOTO errmes
                             'print "CI: evaluated interrupt number as ["+e$+"]":sleep 1
-                            PRINT #12, e$;
+                            PrintToBuffer 12, e$, -1
                         END IF
                         IF argn = 2 OR argn = 3 THEN 'inregs, outregs
                             e$ = fixoperationorder$(e$)
@@ -8924,7 +8924,7 @@ DO
                             e$ = evaluatetotyp(e$, -2) 'offset+size
                             IF Error_Happened THEN GOTO errmes
                             'print "CI: evaluated in/out regs ["+e2$+"] as ["+e$+"]":sleep 1
-                            PRINT #12, "," + e$;
+                            PrintToBuffer 12, "," + e$, -1
                         END IF
                         e$ = ""
                     ELSE
@@ -8932,7 +8932,7 @@ DO
                     END IF
                 NEXT
                 IF argn <> 3 THEN a$ = "Expected CALL INTERRUPT (interrupt-no, inregs, outregs)": GOTO errmes
-                PRINT #12, ");"
+                PrintToBuffer 12, ");", 0
                 IF cispecial = 0 THEN l$ = l$ + sp2 + ")"
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 'print "CI: done":sleep 1
@@ -8984,41 +8984,41 @@ DO
                                         e$ = evaluatetotyp(e$, SINGLETYPE - ISPOINTER)
                                         IF Error_Happened THEN GOTO errmes
                                         v$ = "pass" + str2$(uniquenumber)
-                                        PRINT #defdatahandle, "float *" + v$ + "=NULL;"
-                                        PRINT #13, "if(" + v$ + "==NULL){"
-                                        PRINT #13, "cmem_sp-=4;"
-                                        PRINT #13, v$ + "=(float*)(dblock+cmem_sp);"
-                                        PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
-                                        PRINT #13, "}"
+                                        PrintToBuffer defdatahandle, "float *" + v$ + "=NULL;", 0
+                                        PrintToBuffer 13, "if(" + v$ + "==NULL){", 0
+                                        PrintToBuffer 13, "cmem_sp-=4;", 0
+                                        PrintToBuffer 13, v$ + "=(float*)(dblock+cmem_sp);", 0
+                                        PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
+                                        PrintToBuffer 13, "}", 0
                                         e$ = "(uint16)(((uint8*)&(*" + v$ + "=" + e$ + "))-((uint8*)dblock))"
                                     ELSE
                                         e$ = evaluatetotyp(e$, DOUBLETYPE - ISPOINTER)
                                         IF Error_Happened THEN GOTO errmes
                                         v$ = "pass" + str2$(uniquenumber)
-                                        PRINT #defdatahandle, "double *" + v$ + "=NULL;"
-                                        PRINT #13, "if(" + v$ + "==NULL){"
-                                        PRINT #13, "cmem_sp-=8;"
-                                        PRINT #13, v$ + "=(double*)(dblock+cmem_sp);"
-                                        PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
-                                        PRINT #13, "}"
+                                        PrintToBuffer defdatahandle, "double *" + v$ + "=NULL;", 0
+                                        PrintToBuffer 13, "if(" + v$ + "==NULL){", 0
+                                        PrintToBuffer 13, "cmem_sp-=8;", 0
+                                        PrintToBuffer 13, v$ + "=(double*)(dblock+cmem_sp);", 0
+                                        PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
+                                        PrintToBuffer 13, "}", 0
                                         e$ = "(uint16)(((uint8*)&(*" + v$ + "=" + e$ + "))-((uint8*)dblock))"
                                     END IF
                                 ELSE
                                     e$ = evaluatetotyp(e$, INTEGER64TYPE - ISPOINTER)
                                     IF Error_Happened THEN GOTO errmes
                                     v$ = "pass" + str2$(uniquenumber)
-                                    PRINT #defdatahandle, "int64 *" + v$ + "=NULL;"
-                                    PRINT #13, "if(" + v$ + "==NULL){"
-                                    PRINT #13, "cmem_sp-=8;"
-                                    PRINT #13, v$ + "=(int64*)(dblock+cmem_sp);"
-                                    PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
-                                    PRINT #13, "}"
+                                    PrintToBuffer defdatahandle, "int64 *" + v$ + "=NULL;", 0
+                                    PrintToBuffer 13, "if(" + v$ + "==NULL){", 0
+                                    PrintToBuffer 13, "cmem_sp-=8;", 0
+                                    PrintToBuffer 13, v$ + "=(int64*)(dblock+cmem_sp);", 0
+                                    PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
+                                    PrintToBuffer 13, "}", 0
                                     e$ = "(uint16)(((uint8*)&(*" + v$ + "=" + e$ + "))-((uint8*)dblock))"
                                 END IF
 
                             END IF
 
-                            PRINT #12, "call_absolute_offsets[" + str2$(argn) + "]=" + e$ + ";"
+                            PrintToBuffer 12, "call_absolute_offsets[" + str2$(argn) + "]=" + e$ + ";", 0
                         ELSE
                             IF e$ = "" THEN e$ = e2$ ELSE e$ = e$ + sp + e2$
                             e$ = fixoperationorder(e$)
@@ -9026,7 +9026,7 @@ DO
                             l$ = l$ + tlayout$ + sp2 + ")"
                             e$ = evaluatetotyp(e$, UINTEGERTYPE - ISPOINTER)
                             IF Error_Happened THEN GOTO errmes
-                            PRINT #12, "call_absolute(" + str2$(argn) + "," + e$ + ");"
+                            PrintToBuffer 12, "call_absolute(" + str2$(argn) + "," + e$ + ");", 0
                         END IF
                         argn = argn + 1
                         e$ = ""
@@ -9147,7 +9147,7 @@ DO
                     END IF
                     l$ = firstelement$
                     IF n = 1 THEN
-                        PRINT #12, "sub_close(NULL,0);" 'closes all files
+                        PrintToBuffer 12, "sub_close(NULL,0);", 0 'closes all files
                     ELSE
                         l$ = l$ + sp
                         B = 0
@@ -9170,7 +9170,7 @@ DO
                                     l$ = l$ + tlayout$ + sp2 + "," + sp
                                     e$ = evaluatetotyp(e$, 64&)
                                     IF Error_Happened THEN GOTO errmes
-                                    PRINT #12, "sub_close(" + e$ + ",1);"
+                                    PrintToBuffer 12, "sub_close(" + e$ + ",1);", 0
                                     a3$ = ""
                                     s = 0
                                     GOTO closenexta
@@ -9191,7 +9191,7 @@ DO
                             l$ = l$ + tlayout$
                             e$ = evaluatetotyp(e$, 64&)
                             IF Error_Happened THEN GOTO errmes
-                            PRINT #12, "sub_close(" + e$ + ",1);"
+                            PrintToBuffer 12, "sub_close(" + e$ + ",1);", 0
                         ELSE
                             l$ = LEFT$(l$, LEN(l$) - 1)
                         END IF
@@ -9295,8 +9295,8 @@ DO
                             l$ = l$ + sp2 + tlayout$
                             e$ = evaluatetotyp(e$, 64&)
                             IF Error_Happened THEN GOTO errmes
-                            PRINT #12, "tmp_fileno=" + e$ + ";"
-                            PRINT #12, "if (new_error) goto skip" + u$ + ";"
+                            PrintToBuffer 12, "tmp_fileno=" + e$ + ";", 0
+                            PrintToBuffer 12, "if (new_error) goto skip" + u$ + ";", 0
                             i = i + 1
                             IF i > n THEN a$ = "Expected , ...": GOTO errmes
                             a3$ = ""
@@ -9321,11 +9321,11 @@ DO
                                         e$ = refer(e$, t, 0)
                                         IF Error_Happened THEN GOTO errmes
                                         IF lineinput THEN
-                                            PRINT #12, "sub_file_line_input_string(tmp_fileno," + e$ + ");"
-                                            PRINT #12, "if (new_error) goto skip" + u$ + ";"
+                                            PrintToBuffer 12, "sub_file_line_input_string(tmp_fileno," + e$ + ");", 0
+                                            PrintToBuffer 12, "if (new_error) goto skip" + u$ + ";", 0
                                         ELSE
-                                            PRINT #12, "sub_file_input_string(tmp_fileno," + e$ + ");"
-                                            PRINT #12, "if (new_error) goto skip" + u$ + ";"
+                                            PrintToBuffer 12, "sub_file_input_string(tmp_fileno," + e$ + ");", 0
+                                            PrintToBuffer 12, "if (new_error) goto skip" + u$ + ";", 0
                                         END IF
                                         stringprocessinghappened = 1
                                     ELSE
@@ -9350,7 +9350,7 @@ DO
                                             END IF
                                         END IF
 
-                                        PRINT #12, "if (new_error) goto skip" + u$ + ";"
+                                        PrintToBuffer 12, "if (new_error) goto skip" + u$ + ";", 0
 
                                     END IF
                                     IF i = n THEN EXIT FOR
@@ -9359,8 +9359,8 @@ DO
                                 END IF
                                 IF a3$ = "" THEN a3$ = a2$ ELSE a3$ = a3$ + sp + a2$
                             NEXT
-                            PRINT #12, "skip" + u$ + ":"
-                            IF stringprocessinghappened THEN PRINT #12, cleanupstringprocessingcall$ + "0);"
+                            PrintToBuffer 12, "skip" + u$ + ":", 0
+                            IF stringprocessinghappened THEN PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
                             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                             GOTO finishedline
                         END IF
@@ -9379,7 +9379,7 @@ DO
                     IF LEFT$(a2$, 1) = CHR$(34) THEN
                         e$ = fixoperationorder$(a2$): l$ = l$ + sp + tlayout$
                         IF Error_Happened THEN GOTO errmes
-                        PRINT #12, "qbs_print(qbs_new_txt_len(" + a2$ + "),0);"
+                        PrintToBuffer 12, "qbs_print(qbs_new_txt_len(" + a2$ + "),0);", 0
                         i = i + 1
                         'MUST be followed by a ; or ,
                         a2$ = getelement$(ca$, i)
@@ -9387,7 +9387,7 @@ DO
                         l$ = l$ + sp2 + a2$
                         IF a2$ = ";" THEN
                             IF lineinput THEN GOTO finishedpromptstring
-                            PRINT #12, "qbs_print(qbs_new_txt(" + CHR$(34) + "? " + CHR$(34) + "),0);"
+                            PrintToBuffer 12, "qbs_print(qbs_new_txt(" + CHR$(34) + "? " + CHR$(34) + "),0);", 0
                             GOTO finishedpromptstring
                         END IF
                         IF a2$ = "," THEN
@@ -9396,7 +9396,7 @@ DO
                         a$ = "INPUT STATEMENT: SYNTAX ERROR!": GOTO errmes
                     END IF
                     'there was no promptstring, so print a ?
-                    IF lineinput = 0 THEN PRINT #12, "qbs_print(qbs_new_txt(" + CHR$(34) + "? " + CHR$(34) + "),0);"
+                    IF lineinput = 0 THEN PrintToBuffer 12, "qbs_print(qbs_new_txt(" + CHR$(34) + "? " + CHR$(34) + "),0);", 0
                     finishedpromptstring:
                     numvar = 0
                     FOR i = i TO n
@@ -9429,11 +9429,11 @@ DO
                                 IF Error_Happened THEN GOTO errmes
                                 numvar = numvar + 1
                                 IF lineinput THEN
-                                    PRINT #12, "qbs_input_variabletypes[" + str2(numvar) + "]=ISSTRING+512;"
+                                    PrintToBuffer 12, "qbs_input_variabletypes[" + str2(numvar) + "]=ISSTRING+512;", 0
                                 ELSE
-                                    PRINT #12, "qbs_input_variabletypes[" + str2(numvar) + "]=ISSTRING;"
+                                    PrintToBuffer 12, "qbs_input_variabletypes[" + str2(numvar) + "]=ISSTRING;", 0
                                 END IF
-                                PRINT #12, "qbs_input_variableoffsets[" + str2(numvar) + "]=" + e$ + ";"
+                                PrintToBuffer 12, "qbs_input_variableoffsets[" + str2(numvar) + "]=" + e$ + ";", 0
                                 GOTO gotinputvar
                             END IF
 
@@ -9454,15 +9454,15 @@ DO
                             'IF (t AND ISOFFSETINBITS) THEN
                             'numvar = numvar + 1
                             'consider storing the bit offset in unused bits of t
-                            'PRINT #12, "qbs_input_variabletypes[" + str2(numvar) + "]=" + str2(t) + ";"
-                            'PRINT #12, "qbs_input_variableoffsets[" + str2(numvar) + "]=" + refer(ref$, typ, 1) + ";"
+                            'PrintToBuffer 12, "qbs_input_variabletypes[" + str2(numvar) + "]=" + str2(t) + ";"
+                            'PrintToBuffer 12, "qbs_input_variableoffsets[" + str2(numvar) + "]=" + refer(ref$, typ, 1) + ";"
                             'GOTO gotinputvar
                             'END IF
 
                             'assume it is a regular variable
                             numvar = numvar + 1
-                            PRINT #12, "qbs_input_variabletypes[" + str2(numvar) + "]=" + str2$(t) + ";"
-                            PRINT #12, "qbs_input_variableoffsets[" + str2(numvar) + "]=" + e$ + ";"
+                            PrintToBuffer 12, "qbs_input_variabletypes[" + str2(numvar) + "]=" + str2$(t) + ";", 0
+                            PrintToBuffer 12, "qbs_input_variableoffsets[" + str2(numvar) + "]=" + e$ + ";", 0
                             GOTO gotinputvar
 
                         END IF
@@ -9471,9 +9471,9 @@ DO
                     NEXT
                     IF numvar = 0 THEN a$ = "INPUT STATEMENT: SYNTAX ERROR! (NO VARIABLES LISTED FOR INPUT)": GOTO errmes
                     IF lineinput = 1 AND numvar > 1 THEN a$ = "Too many variables": GOTO errmes
-                    PRINT #12, "qbs_input(" + str2(numvar) + "," + str2$(newline) + ");"
-                    PRINT #12, "if (stop_program) end();"
-                    PRINT #12, cleanupstringprocessingcall$ + "0);"
+                    PrintToBuffer 12, "qbs_input(" + str2(numvar) + "," + str2$(newline) + ");", 0
+                    PrintToBuffer 12, "if (stop_program) end();", 0
+                    PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
                     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                     GOTO finishedline
                 END IF
@@ -9601,9 +9601,9 @@ DO
                     source$ = evaluatetotyp(source$, ISSTRING)
                     IF Error_Happened THEN GOTO errmes
                     IF firstelement$ = "LSET" THEN
-                        PRINT #12, "sub_lset(" + dest$ + "," + source$ + ");"
+                        PrintToBuffer 12, "sub_lset(" + dest$ + "," + source$ + ");", 0
                     ELSE
-                        PRINT #12, "sub_rset(" + dest$ + "," + source$ + ");"
+                        PrintToBuffer 12, "sub_rset(" + dest$ + "," + source$ + ");", 0
                     END IF
                     GOTO finishedline
                 END IF
@@ -9648,7 +9648,7 @@ DO
                         IF (e2typ AND ISSTRING) = 0 THEN a$ = "Type mismatch": GOTO errmes
                         e1$ = refer(e1$, e1typ, 0): e2$ = refer(e2$, e2typ, 0)
                         IF Error_Happened THEN GOTO errmes
-                        PRINT #12, "swap_string(" + e1$ + "," + e2$ + ");"
+                        PrintToBuffer 12, "swap_string(" + e1$ + "," + e2$ + ");", 0
                         GOTO finishedline
                     END IF
 
@@ -9687,11 +9687,11 @@ DO
                                 src$ = "(((char*)" + scope$ + n2$ + ")+(" + o2$ + "))"
                                 B = udtxsize(u) \ 8
                                 siz$ = str2$(B)
-                                IF B = 1 THEN PRINT #12, "swap_8(" + src$ + "," + dst$ + ");"
-                                IF B = 2 THEN PRINT #12, "swap_16(" + src$ + "," + dst$ + ");"
-                                IF B = 4 THEN PRINT #12, "swap_32(" + src$ + "," + dst$ + ");"
-                                IF B = 8 THEN PRINT #12, "swap_64(" + src$ + "," + dst$ + ");"
-                                IF B <> 1 AND B <> 2 AND B <> 4 AND B <> 8 THEN PRINT #12, "swap_block(" + src$ + "," + dst$ + "," + siz$ + ");"
+                                IF B = 1 THEN PrintToBuffer 12, "swap_8(" + src$ + "," + dst$ + ");", 0
+                                IF B = 2 THEN PrintToBuffer 12, "swap_16(" + src$ + "," + dst$ + ");", 0
+                                IF B = 4 THEN PrintToBuffer 12, "swap_32(" + src$ + "," + dst$ + ");", 0
+                                IF B = 8 THEN PrintToBuffer 12, "swap_64(" + src$ + "," + dst$ + ");", 0
+                                IF B <> 1 AND B <> 2 AND B <> 4 AND B <> 8 THEN PrintToBuffer 12, "swap_block(" + src$ + "," + dst$ + "," + siz$ + ");", 0
                                 GOTO finishedline
                             END IF 'e=0
                         END IF 'i
@@ -9715,7 +9715,7 @@ DO
                     IF t AND ISOFFSETINBITS THEN a$ = "Cannot SWAP bit-length variables": GOTO errmes
                     B = t AND 511
                     t$ = str2$(B): IF B > 64 THEN t$ = "longdouble"
-                    PRINT #12, "swap_" + t$ + "(&" + refer(e1$, e1typ, 0) + ",&" + refer(e2$, e2typ, 0) + ");"
+                    PrintToBuffer 12, "swap_" + t$ + "(&" + refer(e1$, e1typ, 0) + ",&" + refer(e2$, e2typ, 0) + ");", 0
                     IF Error_Happened THEN GOTO errmes
                     GOTO finishedline
                 END IF
@@ -10325,15 +10325,15 @@ DO
                             'assume numeric type
                             IF MID$(sfcmemargs(targetid), i, 1) = CHR$(1) THEN 'cmem required?
                                 bytesreq = ((targettyp AND 511) + 7) \ 8
-                                PRINT #defdatahandle, t$ + " *" + v$ + "=NULL;"
-                                PRINT #13, "if(" + v$ + "==NULL){"
-                                PRINT #13, "cmem_sp-=" + str2(bytesreq) + ";"
-                                PRINT #13, v$ + "=(" + t$ + "*)(dblock+cmem_sp);"
-                                PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
-                                PRINT #13, "}"
+                                PrintToBuffer defdatahandle, t$ + " *" + v$ + "=NULL;", 0
+                                PrintToBuffer 13, "if(" + v$ + "==NULL){", 0
+                                PrintToBuffer 13, "cmem_sp-=" + str2(bytesreq) + ";", 0
+                                PrintToBuffer 13, v$ + "=(" + t$ + "*)(dblock+cmem_sp);", 0
+                                PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
+                                PrintToBuffer 13, "}", 0
                                 e$ = "&(*" + v$ + "=" + e$ + ")"
                             ELSE
-                                PRINT #13, t$ + " " + v$ + ";"
+                                PrintToBuffer 13, t$ + " " + v$ + ";", 0
                                 e$ = "&(" + v$ + "=" + e$ + ")"
                             END IF
                             GOTO sete
@@ -10446,9 +10446,9 @@ DO
                     subcall$ = subcall$ + "," + str2$(passed&)
                 END IF
                 subcall$ = subcall$ + ");"
-                PRINT #12, subcall$
+                PrintToBuffer 12, subcall$, 0
                 subcall$ = ""
-                IF stringprocessinghappened THEN PRINT #12, cleanupstringprocessingcall$ + "0);"
+                IF stringprocessinghappened THEN PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
 
                 layoutdone = 1
                 x$ = RIGHT$(l$, 1): IF x$ = sp OR x$ = sp2 THEN l$ = LEFT$(l$, LEN(l$) - 1)
@@ -10518,9 +10518,9 @@ DO
     IF NoChecks = 0 THEN
         IF dynscope THEN
             dynscope = 0
-            PRINT #12, "if(qbevent){evnt(" + str2$(linenumber) + inclinenump$ + ");if(r)goto S_" + str2$(statementn) + ";}"
+            PrintToBuffer 12, "if(qbevent){evnt(" + str2$(linenumber) + inclinenump$ + ");if(r)goto S_" + str2$(statementn) + ";}", 0
         ELSE
-            PRINT #12, "if(!qbevent)break;evnt(" + str2$(linenumber) + inclinenump$ + ");}while(r);"
+            PrintToBuffer 12, "if(!qbevent)break;evnt(" + str2$(linenumber) + inclinenump$ + ");}while(r);", 0
         END IF
     END IF
 
@@ -10700,12 +10700,12 @@ IF ideindentsubs = 0 THEN
 END IF
 
 'close the error handler (cannot be put in 'closemain' because subs/functions can also add error jumps to this file)
-PRINT #14, "exit(99);" 'in theory this line should never be run!
-PRINT #14, "}" 'close error jump handler
+PrintToBuffer 14, "exit(99);", 0 'in theory this line should never be run!
+PrintToBuffer 14, "}", 0 'close error jump handler
 
 'create CLEAR method "CLEAR"
 CloseBuffer 12 'close code handle
-OPEN tmpdir$ + "clear.txt" , "OUTPUT", 12 'direct code to clear.txt
+OpenBuffer tmpdir$ + "clear.txt", "OUTPUT", 12 'direct code to clear.txt
 
 FOR i = 1 TO idn
 
@@ -10742,17 +10742,17 @@ FOR i = 1 TO idn
             IF Error_Happened THEN GOTO errmes
             IF typ AND ISSTRING THEN
                 IF typ AND ISFIXEDLENGTH THEN
-                    PRINT #12, "memset((void*)(" + e$ + "->chr),0," + bytes$ + ");"
+                    PrintToBuffer 12, "memset((void*)(" + e$ + "->chr),0," + bytes$ + ");", 0
                     GOTO cleared
                 ELSE
-                    PRINT #12, e$ + "->len=0;"
+                    PrintToBuffer 12, e$ + "->len=0;", 0
                     GOTO cleared
                 END IF
             END IF
             IF typ AND ISUDT THEN
-                PRINT #12, "memset((void*)" + e$ + ",0," + bytes$ + ");"
+                PrintToBuffer 12, "memset((void*)" + e$ + ",0," + bytes$ + ");", 0
             ELSE
-                PRINT #12, "*" + e$ + "=0;"
+                PrintToBuffer 12, "*" + e$ + "=0;", 0
             END IF
             GOTO cleared
         END IF 'non-array variable
@@ -10978,7 +10978,7 @@ FOR r = 1 TO nLabels
         IF x <> 1 THEN linenumber = Labels(r).Error_Line: a$ = "Ambiguous DATA label": GOTO errmes
 
         'add global data offset variable
-        PRINT #18, "ptrszint data_at_LABEL_" + a$ + "=" + str2(Labels(r).Data_Offset) + ";"
+        PrintToBuffer 18, "ptrszint data_at_LABEL_" + a$ + "=" + str2(Labels(r).Data_Offset) + ";", 0
 
     END IF 'data referenced
 
@@ -10997,29 +10997,29 @@ CloseBuffer 12
 'return to 'main'
 subfunc$ = ""
 defdatahandle = 18
-CloseBuffer 13: OPEN tmpdir$ + "maindata.txt" , "APPEND", 13
-CloseBuffer 19: OPEN tmpdir$ + "mainfree.txt" , "APPEND", 19
+CloseBuffer 13: OpenBuffer tmpdir$ + "maindata.txt", "APPEND", 13
+CloseBuffer 19: OpenBuffer tmpdir$ + "mainfree.txt", "APPEND", 19
 
 IF Console THEN
-    PRINT #18, "int32 console=1;"
+    PrintToBuffer 18, "int32 console=1;", 0
 ELSE
-    PRINT #18, "int32 console=0;"
+    PrintToBuffer 18, "int32 console=0;", 0
 END IF
 
 IF ScreenHide THEN
-    PRINT #18, "int32 screen_hide_startup=1;"
+    PrintToBuffer 18, "int32 screen_hide_startup=1;", 0
 ELSE
-    PRINT #18, "int32 screen_hide_startup=0;"
+    PrintToBuffer 18, "int32 screen_hide_startup=0;", 0
 END IF
 
 IF Asserts THEN
-    PRINT #18, "int32 asserts=1;"
+    PrintToBuffer 18, "int32 asserts=1;", 0
 ELSE
-    PRINT #18, "int32 asserts=0;"
+    PrintToBuffer 18, "int32 asserts=0;", 0
 END IF
 
-fh = FREEFILE
-OPEN tmpdir$ + "dyninfo.txt" , "APPEND", fh
+fh = FreeBuffer%
+OpenBuffer tmpdir$ + "dyninfo.txt", "APPEND", fh
 IF Resize THEN
     PRINT #fh, "ScreenResize=1;"
 END IF
@@ -11029,10 +11029,10 @@ END IF
 CloseBuffer fh
 
 'DATA_finalize
-PRINT #18, "ptrszint data_size=" + str2(DataOffset) + ";"
+PrintToBuffer 18, "ptrszint data_size=" + str2(DataOffset) + ";", 0
 IF DataOffset = 0 THEN
 
-    PRINT #18, "uint8 *data=(uint8*)calloc(1,1);"
+    PrintToBuffer 18, "uint8 *data=(uint8*)calloc(1,1);", 0
 
 ELSE
 
@@ -11040,24 +11040,24 @@ ELSE
         IF os$ = "WIN" THEN
             IF OS_BITS = 32 THEN
                 x$ = CHR$(0): PUT #16, , x$
-                PRINT #18, "extern " + CHR$(34) + "C" + CHR$(34) + "{"
-                PRINT #18, "extern char *binary_____temp" + tempfolderindexstr2$ + "__data_bin_start;"
-                PRINT #18, "}"
-                PRINT #18, "uint8 *data=(uint8*)&binary_____temp" + tempfolderindexstr2$ + "__data_bin_start;"
+                PrintToBuffer 18, "extern " + CHR$(34) + "C" + CHR$(34) + "{", 0
+                PrintToBuffer 18, "extern char *binary_____temp" + tempfolderindexstr2$ + "__data_bin_start;", 0
+                PrintToBuffer 18, "}", 0
+                PrintToBuffer 18, "uint8 *data=(uint8*)&binary_____temp" + tempfolderindexstr2$ + "__data_bin_start;", 0
             ELSE
                 x$ = CHR$(0): PUT #16, , x$
-                PRINT #18, "extern " + CHR$(34) + "C" + CHR$(34) + "{"
-                PRINT #18, "extern char *_binary_____temp" + tempfolderindexstr2$ + "__data_bin_start;"
-                PRINT #18, "}"
-                PRINT #18, "uint8 *data=(uint8*)&_binary_____temp" + tempfolderindexstr2$ + "__data_bin_start;"
+                PrintToBuffer 18, "extern " + CHR$(34) + "C" + CHR$(34) + "{", 0
+                PrintToBuffer 18, "extern char *_binary_____temp" + tempfolderindexstr2$ + "__data_bin_start;", 0
+                PrintToBuffer 18, "}", 0
+                PrintToBuffer 18, "uint8 *data=(uint8*)&_binary_____temp" + tempfolderindexstr2$ + "__data_bin_start;", 0
             END IF
         END IF
         IF os$ = "LNX" THEN
             x$ = CHR$(0): PUT #16, , x$
-            PRINT #18, "extern " + CHR$(34) + "C" + CHR$(34) + "{"
-            PRINT #18, "extern char *_binary____temp" + tempfolderindexstr2$ + "_data_bin_start;"
-            PRINT #18, "}"
-            PRINT #18, "uint8 *data=(uint8*)&_binary____temp" + tempfolderindexstr2$ + "_data_bin_start;"
+            PrintToBuffer 18, "extern " + CHR$(34) + "C" + CHR$(34) + "{", 0
+            PrintToBuffer 18, "extern char *_binary____temp" + tempfolderindexstr2$ + "_data_bin_start;", 0
+            PrintToBuffer 18, "}", 0
+            PrintToBuffer 18, "uint8 *data=(uint8*)&_binary____temp" + tempfolderindexstr2$ + "_data_bin_start;", 0
         END IF
     ELSE
         'inline data
@@ -11072,8 +11072,8 @@ ELSE
             x2$ = x2$ + inlinedatastr$(ASC(x$, i))
         NEXT
         x2$ = x2$ + "0};"
-        PRINT #18, x2$
-        PRINT #18, "uint8 *data=&inline_data[0];"
+        PrintToBuffer 18, x2$, 0
+        PrintToBuffer 18, "uint8 *data=&inline_data[0];", 0
         x$ = "": x2$ = ""
     END IF
 END IF
@@ -11137,75 +11137,75 @@ FOR x = 1 TO commonarraylistn
 
 
 
-        OPEN tmpdir$ + "inpchain" + str2$(i) + ".txt" , "OUTPUT", 12
-        PRINT #12, "if (int32val==2){" 'array place-holder
+        OpenBuffer tmpdir$ + "inpchain" + str2$(i) + ".txt", "OUTPUT", 12
+        PrintToBuffer 12, "if (int32val==2){", 0 'array place-holder
         'create buffer to store array as-is in global.txt
         x$ = str2$(uniquenumber)
         x1$ = "chainarraybuf" + x$
         x2$ = "chainarraybufsiz" + x$
-        PRINT #18, "static uint8 *" + x1$ + "=(uint8*)malloc(1);"
-        PRINT #18, "static int64 " + x2$ + "=0;"
+        PrintToBuffer 18, "static uint8 *" + x1$ + "=(uint8*)malloc(1);", 0
+        PrintToBuffer 18, "static int64 " + x2$ + "=0;", 0
         'read next command
-        PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
+        PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0
 
-        IF command = 3 THEN PRINT #12, "if (int32val==3){" 'fixed-length-element array
-        IF command = 4 THEN PRINT #12, "if (int32val==4){" 'var-length-element array
-        PRINT #12, x2$ + "+=4; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int32*)(" + x1$ + "+" + x2$ + "-4)=int32val;"
+        IF command = 3 THEN PrintToBuffer 12, "if (int32val==3){", 0 'fixed-length-element array
+        IF command = 4 THEN PrintToBuffer 12, "if (int32val==4){", 0 'var-length-element array
+        PrintToBuffer 12, x2$ + "+=4; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int32*)(" + x1$ + "+" + x2$ + "-4)=int32val;", 0
 
         IF command = 3 THEN
             'read size in bits of one element, convert it to bytes
-            PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);"
-            PRINT #12, x2$ + "+=8; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int64*)(" + x1$ + "+" + x2$ + "-8)=int64val;"
-            PRINT #12, "bytes=int64val>>3;"
+            PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0
+            PrintToBuffer 12, x2$ + "+=8; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int64*)(" + x1$ + "+" + x2$ + "-8)=int64val;", 0
+            PrintToBuffer 12, "bytes=int64val>>3;", 0
         END IF 'com=3
 
-        IF command = 4 THEN PRINT #12, "bytes=1;" 'bytes used to calculate number of elements
+        IF command = 4 THEN PrintToBuffer 12, "bytes=1;", 0 'bytes used to calculate number of elements
 
         'read number of dimensions
-        PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
-        PRINT #12, x2$ + "+=4; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int32*)(" + x1$ + "+" + x2$ + "-4)=int32val;"
+        PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0
+        PrintToBuffer 12, x2$ + "+=4; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int32*)(" + x1$ + "+" + x2$ + "-4)=int32val;", 0
 
         'read size of dimensions & calculate the size of the array in bytes
-        PRINT #12, "while(int32val--){"
-        PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);" 'lbound
-        PRINT #12, x2$ + "+=8; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int64*)(" + x1$ + "+" + x2$ + "-8)=int64val;"
-        PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int64val2,8," + NewByteElement$ + "),0);" 'ubound
-        PRINT #12, x2$ + "+=8; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int64*)(" + x1$ + "+" + x2$ + "-8)=int64val2;"
-        PRINT #12, "bytes*=(int64val2-int64val+1);"
-        PRINT #12, "}"
+        PrintToBuffer 12, "while(int32val--){", 0
+        PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0 'lbound
+        PrintToBuffer 12, x2$ + "+=8; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int64*)(" + x1$ + "+" + x2$ + "-8)=int64val;", 0
+        PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int64val2,8," + NewByteElement$ + "),0);", 0 'ubound
+        PrintToBuffer 12, x2$ + "+=8; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int64*)(" + x1$ + "+" + x2$ + "-8)=int64val2;", 0
+        PrintToBuffer 12, "bytes*=(int64val2-int64val+1);", 0
+        PrintToBuffer 12, "}", 0
 
         IF command = 3 THEN
             'read the array data
-            PRINT #12, x2$ + "+=bytes; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + ");"
-            PRINT #12, "sub_get(FF,NULL,byte_element((uint64)(" + x1$ + "+" + x2$ + "-bytes),bytes," + NewByteElement$ + "),0);"
+            PrintToBuffer 12, x2$ + "+=bytes; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + ");", 0
+            PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)(" + x1$ + "+" + x2$ + "-bytes),bytes," + NewByteElement$ + "),0);", 0
         END IF 'com=3
 
         IF command = 4 THEN
-            PRINT #12, "bytei=0;"
-            PRINT #12, "while(bytei<bytes){"
-            PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);" 'get size
-            PRINT #12, x2$ + "+=8; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int64*)(" + x1$ + "+" + x2$ + "-8)=int64val;"
-            PRINT #12, x2$ + "+=(int64val>>3); " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + ");"
-            PRINT #12, "sub_get(FF,NULL,byte_element((uint64)(" + x1$ + "+" + x2$ + "-(int64val>>3)),(int64val>>3)," + NewByteElement$ + "),0);"
-            PRINT #12, "bytei++;"
-            PRINT #12, "}"
+            PrintToBuffer 12, "bytei=0;", 0
+            PrintToBuffer 12, "while(bytei<bytes){", 0
+            PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0 'get size
+            PrintToBuffer 12, x2$ + "+=8; " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + "); *(int64*)(" + x1$ + "+" + x2$ + "-8)=int64val;", 0
+            PrintToBuffer 12, x2$ + "+=(int64val>>3); " + x1$ + "=(uint8*)realloc(" + x1$ + "," + x2$ + ");", 0
+            PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)(" + x1$ + "+" + x2$ + "-(int64val>>3)),(int64val>>3)," + NewByteElement$ + "),0);", 0
+            PrintToBuffer 12, "bytei++;", 0
+            PrintToBuffer 12, "}", 0
         END IF
 
         'get next command
-        PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
-        PRINT #12, "}" 'command=3 or 4
+        PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0
+        PrintToBuffer 12, "}", 0 'command=3 or 4
 
-        PRINT #12, "}" 'array place-holder
+        PrintToBuffer 12, "}", 0 'array place-holder
         CloseBuffer 12
 
 
         'save array (saves the buffered data, if any, for later)
 
-        OPEN tmpdir$ + "chain" + str2$(i) + ".txt" , "OUTPUT", 12
-        PRINT #12, "int32val=2;" 'placeholder
-        PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
+        OpenBuffer tmpdir$ + "chain" + str2$(i) + ".txt", "OUTPUT", 12
+        PrintToBuffer 12, "int32val=2;", 0 'placeholder
+        PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0
 
-        PRINT #12, "sub_put(FF,NULL,byte_element((uint64)" + x1$ + "," + x2$ + "," + NewByteElement$ + "),0);"
+        PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)" + x1$ + "," + x2$ + "," + NewByteElement$ + "),0);", 0
         CloseBuffer 12
 
 
@@ -11216,26 +11216,26 @@ FOR x = 1 TO commonarraylistn
 
         'load array
 
-        OPEN tmpdir$ + "inpchain" + str2$(i) + ".txt" , "OUTPUT", 12
+        OpenBuffer tmpdir$ + "inpchain" + str2$(i) + ".txt", "OUTPUT", 12
 
-        PRINT #12, "if (int32val==2){" 'array place-holder
-        PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
+        PrintToBuffer 12, "if (int32val==2){", 0 'array place-holder
+        PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0
 
-        IF command = 3 THEN PRINT #12, "if (int32val==3){" 'fixed-length-element array
-        IF command = 4 THEN PRINT #12, "if (int32val==4){" 'var-length-element array
+        IF command = 3 THEN PrintToBuffer 12, "if (int32val==3){", 0 'fixed-length-element array
+        IF command = 4 THEN PrintToBuffer 12, "if (int32val==4){", 0 'var-length-element array
 
         IF command = 3 THEN
             'get size in bits
-            PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);"
+            PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0
             '***assume correct***
         END IF
 
         'get number of elements
-        PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
+        PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0
         '***assume correct***
 
         e$ = ""
-        IF command = 4 THEN PRINT #12, "bytes=1;" 'bytes counts the number of total elements
+        IF command = 4 THEN PrintToBuffer 12, "bytes=1;", 0 'bytes counts the number of total elements
         FOR x2 = 1 TO arrayelements
 
             'create 'secret' variables to assist in passing common arrays
@@ -11254,11 +11254,11 @@ FOR x = 1 TO commonarraylistn
 
             END IF
 
-            PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);"
-            PRINT #12, "*__INTEGER64____RESERVED_COMMON_LBOUND" + str2$(x2) + "=int64val;"
-            PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int64val2,8," + NewByteElement$ + "),0);"
-            PRINT #12, "*__INTEGER64____RESERVED_COMMON_UBOUND" + str2$(x2) + "=int64val2;"
-            IF command = 4 THEN PRINT #12, "bytes*=(int64val2-int64val+1);"
+            PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0
+            PrintToBuffer 12, "*__INTEGER64____RESERVED_COMMON_LBOUND" + str2$(x2) + "=int64val;", 0
+            PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int64val2,8," + NewByteElement$ + "),0);", 0
+            PrintToBuffer 12, "*__INTEGER64____RESERVED_COMMON_UBOUND" + str2$(x2) + "=int64val2;", 0
+            IF command = 4 THEN PrintToBuffer 12, "bytes*=(int64val2-int64val+1);", 0
             IF x2 > 1 THEN e$ = e$ + sp + "," + sp
             e$ = e$ + "___RESERVED_COMMON_LBOUND" + str2$(x2) + sp + "TO" + sp + "___RESERVED_COMMON_UBOUND" + str2$(x2)
         NEXT
@@ -11278,50 +11278,50 @@ FOR x = 1 TO commonarraylistn
             varname$ = varname$ + sp + "(" + sp + ")"
             e$ = evaluatetotyp(fixoperationorder$(varname$), -4)
             IF Error_Happened THEN GOTO errmes
-            PRINT #12, "sub_get(FF,NULL," + e$ + ",0);"
+            PrintToBuffer 12, "sub_get(FF,NULL," + e$ + ",0);", 0
         END IF
 
         IF command = 4 THEN
-            PRINT #12, "bytei=0;"
-            PRINT #12, "while(bytei<bytes){"
-            PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);" 'get size
-            PRINT #12, "tqbs=((qbs*)(((uint64*)(" + n2$ + "[0]))[bytei]));" 'get element
-            PRINT #12, "qbs_set(tqbs,qbs_new(int64val>>3,1));" 'change string size
-            PRINT #12, "sub_get(FF,NULL,byte_element((uint64)tqbs->chr,int64val>>3," + NewByteElement$ + "),0);" 'get size
-            PRINT #12, "bytei++;"
-            PRINT #12, "}"
+            PrintToBuffer 12, "bytei=0;", 0
+            PrintToBuffer 12, "while(bytei<bytes){", 0
+            PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0 'get size
+            PrintToBuffer 12, "tqbs=((qbs*)(((uint64*)(" + n2$ + "[0]))[bytei]));", 0 'get element
+            PrintToBuffer 12, "qbs_set(tqbs,qbs_new(int64val>>3,1));", 0 'change string size
+            PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)tqbs->chr,int64val>>3," + NewByteElement$ + "),0);", 0 'get size
+            PrintToBuffer 12, "bytei++;", 0
+            PrintToBuffer 12, "}", 0
         END IF
 
         'get next command
-        PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
-        PRINT #12, "}"
-        PRINT #12, "}"
+        PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0
+        PrintToBuffer 12, "}", 0
+        PrintToBuffer 12, "}", 0
         CloseBuffer 12
 
         'save array
 
-        OPEN tmpdir$ + "chain" + str2$(i) + ".txt" , "OUTPUT", 12
+        OpenBuffer tmpdir$ + "chain" + str2$(i) + ".txt", "OUTPUT", 12
 
-        PRINT #12, "int32val=2;" 'placeholder
-        PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
+        PrintToBuffer 12, "int32val=2;", 0 'placeholder
+        PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0
 
-        PRINT #12, "if (" + n2$ + "[2]&1){" 'don't add unless defined
+        PrintToBuffer 12, "if (" + n2$ + "[2]&1){", 0 'don't add unless defined
 
-        IF command = 3 THEN PRINT #12, "int32val=3;"
-        IF command = 4 THEN PRINT #12, "int32val=4;"
-        PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
+        IF command = 3 THEN PrintToBuffer 12, "int32val=3;", 0
+        IF command = 4 THEN PrintToBuffer 12, "int32val=4;", 0
+        PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0
 
         IF command = 3 THEN
             'size of each element in bits
             bits = t AND 511
             IF t AND ISUDT THEN bits = udtxsize(t AND 511)
             IF t AND ISSTRING THEN bits = tsize * 8
-            PRINT #12, "int64val=" + str2$(bits) + ";" 'size in bits
-            PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);"
+            PrintToBuffer 12, "int64val=" + str2$(bits) + ";", 0 'size in bits
+            PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0
         END IF 'com=3
 
-        PRINT #12, "int32val=" + str2$(arrayelements) + ";" 'number of dimensions
-        PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);"
+        PrintToBuffer 12, "int32val=" + str2$(arrayelements) + ";", 0 'number of dimensions
+        PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);", 0
 
         IF command = 3 THEN
 
@@ -11330,52 +11330,52 @@ FOR x = 1 TO commonarraylistn
                 e$ = "LBOUND" + sp + "(" + sp + n$ + sp + "," + sp + str2$(x2) + sp + ")"
                 e$ = evaluatetotyp(fixoperationorder$(e$), 64)
                 IF Error_Happened THEN GOTO errmes
-                PRINT #12, "int64val=" + e$ + ";"
-                PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);"
+                PrintToBuffer 12, "int64val=" + e$ + ";", 0
+                PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0
                 e$ = "UBOUND" + sp + "(" + sp + n$ + sp + "," + sp + str2$(x2) + sp + ")"
                 e$ = evaluatetotyp(fixoperationorder$(e$), 64)
                 IF Error_Happened THEN GOTO errmes
-                PRINT #12, "int64val=" + e$ + ";"
-                PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);"
+                PrintToBuffer 12, "int64val=" + e$ + ";", 0
+                PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0
             NEXT
 
             'array data
             e$ = evaluatetotyp(fixoperationorder$(n$ + sp + "(" + sp + ")"), -4)
             IF Error_Happened THEN GOTO errmes
-            PRINT #12, "sub_put(FF,NULL," + e$ + ",0);"
+            PrintToBuffer 12, "sub_put(FF,NULL," + e$ + ",0);", 0
 
         END IF 'com=3
 
         IF command = 4 THEN
 
             'store LBOUND/UBOUND values and calculate number of total elements/strings
-            PRINT #12, "bytes=1;" 'note: bytes is actually the total number of elements
+            PrintToBuffer 12, "bytes=1;", 0 'note: bytes is actually the total number of elements
             FOR x2 = 1 TO arrayelements
                 e$ = "LBOUND" + sp + "(" + sp + n$ + sp + "," + sp + str2$(x2) + sp + ")"
                 e$ = evaluatetotyp(fixoperationorder$(e$), 64)
                 IF Error_Happened THEN GOTO errmes
-                PRINT #12, "int64val=" + e$ + ";"
-                PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);"
+                PrintToBuffer 12, "int64val=" + e$ + ";", 0
+                PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0
                 e$ = "UBOUND" + sp + "(" + sp + n$ + sp + "," + sp + str2$(x2) + sp + ")"
                 e$ = evaluatetotyp(fixoperationorder$(e$), 64)
                 IF Error_Happened THEN GOTO errmes
-                PRINT #12, "int64val2=" + e$ + ";"
-                PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int64val2,8," + NewByteElement$ + "),0);"
-                PRINT #12, "bytes*=(int64val2-int64val+1);"
+                PrintToBuffer 12, "int64val2=" + e$ + ";", 0
+                PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int64val2,8," + NewByteElement$ + "),0);", 0
+                PrintToBuffer 12, "bytes*=(int64val2-int64val+1);", 0
             NEXT
 
-            PRINT #12, "bytei=0;"
-            PRINT #12, "while(bytei<bytes){"
-            PRINT #12, "tqbs=((qbs*)(((uint64*)(" + n2$ + "[0]))[bytei]));" 'get element
-            PRINT #12, "int64val=tqbs->len; int64val<<=3;"
-            PRINT #12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);" 'size of element
-            PRINT #12, "sub_put(FF,NULL,byte_element((uint64)tqbs->chr,tqbs->len," + NewByteElement$ + "),0);" 'element data
-            PRINT #12, "bytei++;"
-            PRINT #12, "}"
+            PrintToBuffer 12, "bytei=0;", 0
+            PrintToBuffer 12, "while(bytei<bytes){", 0
+            PrintToBuffer 12, "tqbs=((qbs*)(((uint64*)(" + n2$ + "[0]))[bytei]));", 0 'get element
+            PrintToBuffer 12, "int64val=tqbs->len; int64val<<=3;", 0
+            PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0 'size of element
+            PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)tqbs->chr,tqbs->len," + NewByteElement$ + "),0);", 0 'element data
+            PrintToBuffer 12, "bytei++;", 0
+            PrintToBuffer 12, "}", 0
 
         END IF 'com=4
 
-        PRINT #12, "}" 'don't add unless defined
+        PrintToBuffer 12, "}", 0 'don't add unless defined
 
         CloseBuffer 12
 
@@ -12948,13 +12948,13 @@ FUNCTION allocarray (n2$, elements$, elementsize, udt)
 
     'Begin creation of array descriptor (if array has not been defined yet)
     IF arraydesc = 0 THEN
-        PRINT #defdatahandle, "ptrszint *" + n$ + "=NULL;"
-        PRINT #13, "if (!" + n$ + "){"
-        PRINT #13, n$ + "=(ptrszint*)mem_static_malloc(" + str2(4 * nume + 4 + 1) + "*ptrsz);" '+1 is for the lock
+        PrintToBuffer defdatahandle, "ptrszint *" + n$ + "=NULL;", 0
+        PrintToBuffer 13, "if (!" + n$ + "){", 0
+        PrintToBuffer 13, n$ + "=(ptrszint*)mem_static_malloc(" + str2(4 * nume + 4 + 1) + "*ptrsz);", 0 '+1 is for the lock
         'create _MEM lock
-        PRINT #13, "new_mem_lock();"
-        PRINT #13, "mem_lock_tmp->type=4;"
-        PRINT #13, "((ptrszint*)" + n$ + ")[" + str2(4 * nume + 4 + 1 - 1) + "]=(ptrszint)mem_lock_tmp;"
+        PrintToBuffer 13, "new_mem_lock();", 0
+        PrintToBuffer 13, "mem_lock_tmp->type=4;", 0
+        PrintToBuffer 13, "((ptrszint*)" + n$ + ")[" + str2(4 * nume + 4 + 1 - 1) + "]=(ptrszint)mem_lock_tmp;", 0
     END IF
 
     'generate sizestr$ & elesizestr$ (both are used in various places in following code)
@@ -12971,7 +12971,7 @@ FUNCTION allocarray (n2$, elements$, elementsize, udt)
     '------------------STATIC ARRAY CREATION--------------------------------
     IF staticarray THEN
         'STATIC memory
-        PRINT #13, sd$ 'setup new array dimension ranges
+        PrintToBuffer 13, sd$, 0 'setup new array dimension ranges
         'Example of sd$ for DIM a(10):
         '__ARRAY_SINGLE_A[4]= 0 ;
         '__ARRAY_SINGLE_A[5]=( 10 )-__ARRAY_SINGLE_A[4]+1;
@@ -12979,45 +12979,45 @@ FUNCTION allocarray (n2$, elements$, elementsize, udt)
         IF cmem AND stringarray = 0 THEN
             'Note: A string array's pointers are always stored in 64bit memory
             '(static)CONVENTINAL memory
-            PRINT #13, n$ + "[0]=(ptrszint)cmem_static_pointer;"
+            PrintToBuffer 13, n$ + "[0]=(ptrszint)cmem_static_pointer;", 0
             'alloc mem & check if static memory boundry has oversteped dynamic memory boundry
-            PRINT #13, "if ((cmem_static_pointer+=((" + sizestr$ + ")+15)&-16)>cmem_dynamic_base) error(257);"
+            PrintToBuffer 13, "if ((cmem_static_pointer+=((" + sizestr$ + ")+15)&-16)>cmem_dynamic_base) error(257);", 0
             '64K check
-            PRINT #13, "if ((" + sizestr$ + ")>65536) error(257);"
+            PrintToBuffer 13, "if ((" + sizestr$ + ")>65536) error(257);", 0
             'clear array
-            PRINT #13, "memset((void*)(" + n$ + "[0]),0," + sizestr$ + ");"
+            PrintToBuffer 13, "memset((void*)(" + n$ + "[0]),0," + sizestr$ + ");", 0
             'set flags
-            PRINT #13, n$ + "[2]=1+2+4;" 'init+static+cmem
+            PrintToBuffer 13, n$ + "[2]=1+2+4;", 0 'init+static+cmem
         ELSE
             '64BIT MEMORY
-            PRINT #13, n$ + "[0]=(ptrszint)mem_static_malloc(" + sizestr$ + ");"
+            PrintToBuffer 13, n$ + "[0]=(ptrszint)mem_static_malloc(" + sizestr$ + ");", 0
             IF stringarray THEN
                 'Init string pointers in the array
-                PRINT #13, "tmp_long=" + elesizestr$ + ";"
-                PRINT #13, "while(tmp_long--){"
+                PrintToBuffer 13, "tmp_long=" + elesizestr$ + ";", 0
+                PrintToBuffer 13, "while(tmp_long--){", 0
                 IF cmem THEN
-                    PRINT #13, "((uint64*)(" + n$ + "[0]))[tmp_long]=(uint64)qbs_new_cmem(0,0);"
+                    PrintToBuffer 13, "((uint64*)(" + n$ + "[0]))[tmp_long]=(uint64)qbs_new_cmem(0,0);", 0
                 ELSE
-                    PRINT #13, "((uint64*)(" + n$ + "[0]))[tmp_long]=(uint64)qbs_new(0,0);"
+                    PrintToBuffer 13, "((uint64*)(" + n$ + "[0]))[tmp_long]=(uint64)qbs_new(0,0);", 0
                 END IF
-                PRINT #13, "}"
+                PrintToBuffer 13, "}", 0
             ELSE
                 'clear array
-                PRINT #13, "memset((void*)(" + n$ + "[0]),0," + sizestr$ + ");"
+                PrintToBuffer 13, "memset((void*)(" + n$ + "[0]),0," + sizestr$ + ");", 0
             END IF
-            PRINT #13, n$ + "[2]=1+2;" 'init+static
+            PrintToBuffer 13, n$ + "[2]=1+2;", 0 'init+static
         END IF
 
         IF udt > 0 AND udtxvariable(udt) THEN
-            PRINT #13, "tmp_long=" + elesizestr$ + ";"
-            PRINT #13, "while(tmp_long--){"
+            PrintToBuffer 13, "tmp_long=" + elesizestr$ + ";", 0
+            PrintToBuffer 13, "while(tmp_long--){", 0
             initialise_array_udt_varstrings n$, udt, 0, bytesperelement$, acc$
-            PRINT #13, acc$
-            PRINT #13, "}"
+            PrintToBuffer 13, acc$, 0
+            PrintToBuffer 13, "}", 0
         END IF
 
         'Close static array desc
-        PRINT #13, "}"
+        PrintToBuffer 13, "}", 0
         allocarray = nume + 65536
     END IF
     '------------------END OF STATIC ARRAY CREATION-------------------------
@@ -13174,20 +13174,20 @@ FUNCTION allocarray (n2$, elements$, elementsize, udt)
 
                 '2. Generate "clean up" code (called when EXITING A SUB/FUNCTION)
                 IF arraydesc = 0 THEN 'only add for first declaration of the array
-                    PRINT #19, "if (" + n$ + "[2]&1){" 'initialized?
-                    PRINT #19, "tmp_long=" + elesizestr$ + ";"
+                    PrintToBuffer 19, "if (" + n$ + "[2]&1){", 0 'initialized?
+                    PrintToBuffer 19, "tmp_long=" + elesizestr$ + ";", 0
                     IF udt > 0 AND udtxvariable(udt) THEN
-                        PRINT #19, "while(tmp_long--) {"
+                        PrintToBuffer 19, "while(tmp_long--) {", 0
                         acc$ = ""
                         free_array_udt_varstrings n$, udt, 0, bytesperelement$, acc$
-                        PRINT #19, acc$ + "}"
+                        PrintToBuffer 19, acc$ + "}", 0
                     ELSE
-                        PRINT #19, "while(tmp_long--) qbs_free((qbs*)((uint64*)(" + n$ + "[0]))[tmp_long]);"
+                        PrintToBuffer 19, "while(tmp_long--) qbs_free((qbs*)((uint64*)(" + n$ + "[0]))[tmp_long]);", 0
                     END IF
-                    PRINT #19, "free((void*)(" + n$ + "[0]));"
-                    PRINT #19, "}"
+                    PrintToBuffer 19, "free((void*)(" + n$ + "[0]));", 0
+                    PrintToBuffer 19, "}", 0
                     'free lock (_MEM)
-                    PRINT #19, "free_mem_lock( (mem_lock*)((ptrszint*)" + n$ + ")[" + str2(4 * nume + 4 + 1 - 1) + "] );"
+                    PrintToBuffer 19, "free_mem_lock( (mem_lock*)((ptrszint*)" + n$ + ")[" + str2(4 * nume + 4 + 1 - 1) + "] );", 0
                 END IF
 
 
@@ -13246,15 +13246,15 @@ FUNCTION allocarray (n2$, elements$, elementsize, udt)
 
                 '2. Generate "clean up" code (called when EXITING A SUB/FUNCTION)
                 IF arraydesc = 0 THEN 'only add for first declaration of the array
-                    PRINT #19, "if (" + n$ + "[2]&1){" 'initialized?
-                    PRINT #19, "if (" + n$ + "[2]&4){" 'array is in cmem
-                    PRINT #19, "cmem_dynamic_free((uint8*)(" + n$ + "[0]));"
-                    PRINT #19, "}else{"
-                    PRINT #19, "free((void*)(" + n$ + "[0]));"
-                    PRINT #19, "}" 'cmem
-                    PRINT #19, "}" 'init
+                    PrintToBuffer 19, "if (" + n$ + "[2]&1){", 0 'initialized?
+                    PrintToBuffer 19, "if (" + n$ + "[2]&4){", 0 'array is in cmem
+                    PrintToBuffer 19, "cmem_dynamic_free((uint8*)(" + n$ + "[0]));", 0
+                    PrintToBuffer 19, "}else{", 0
+                    PrintToBuffer 19, "free((void*)(" + n$ + "[0]));", 0
+                    PrintToBuffer 19, "}", 0 'cmem
+                    PrintToBuffer 19, "}", 0 'init
                     'free lock (_MEM)
-                    PRINT #19, "free_mem_lock( (mem_lock*)((ptrszint*)" + n$ + ")[" + str2(4 * nume + 4 + 1 - 1) + "] );"
+                    PrintToBuffer 19, "free_mem_lock( (mem_lock*)((ptrszint*)" + n$ + ")[" + str2(4 * nume + 4 + 1 - 1) + "] );", 0
                 END IF
             END IF 'not string array
 
@@ -13263,22 +13263,22 @@ FUNCTION allocarray (n2$, elements$, elementsize, udt)
         '----FINISH ARRAY DESCRIPTOR IF DEFINING FOR THE FIRST TIME----
         IF arraydesc = 0 THEN
             'Note: Array is init as undefined (& possibly a cmem flag)
-            IF cmem THEN PRINT #13, n$ + "[2]=4;" ELSE PRINT #13, n$ + "[2]=0;"
+            IF cmem THEN PrintToBuffer 13, n$ + "[2]=4;", 0 ELSE PrintToBuffer 13, n$ + "[2]=0;", 0
             'set dimensions as undefined
             FOR i = 1 TO nume
                 b = i * 4
-                PRINT #13, n$ + "[" + str2(b) + "]=2147483647;" 'base
-                PRINT #13, n$ + "[" + str2(b + 1) + "]=0;" 'num. index
-                PRINT #13, n$ + "[" + str2(b + 2) + "]=0;" 'multiplier
+                PrintToBuffer 13, n$ + "[" + str2(b) + "]=2147483647;", 0 'base
+                PrintToBuffer 13, n$ + "[" + str2(b + 1) + "]=0;", 0 'num. index
+                PrintToBuffer 13, n$ + "[" + str2(b + 2) + "]=0;", 0 'multiplier
             NEXT
             IF stringarray THEN
                 'set array's data offset to the offset of the offset to nothingstring
-                PRINT #13, n$ + "[0]=(ptrszint)&nothingstring;"
+                PrintToBuffer 13, n$ + "[0]=(ptrszint)&nothingstring;", 0
             ELSE
                 'set array's data offset to "nothing"
-                PRINT #13, n$ + "[0]=(ptrszint)nothingvalue;"
+                PrintToBuffer 13, n$ + "[0]=(ptrszint)nothingvalue;", 0
             END IF
-            PRINT #13, "}" 'close array descriptor
+            PrintToBuffer 13, "}", 0 'close array descriptor
         END IF 'arraydesc = 0
 
         IF undefined = 0 THEN
@@ -13295,9 +13295,9 @@ FUNCTION allocarray (n2$, elements$, elementsize, udt)
 
     IF autoary = 0 THEN
         IF dimoption = 3 THEN 'STATIC a(100) puts creation code in main
-            PRINT #13, f12$
+            PrintToBuffer 13, f12$, 0
         ELSE
-            PRINT #12, f12$
+            PrintToBuffer 12, f12$, 0
         END IF
     END IF
 
@@ -13456,12 +13456,12 @@ END SUB
 SUB closemain
     xend
 
-    PRINT #12, "return;"
+    PrintToBuffer 12, "return;", 0
 
-    PRINT #12, "}"
-    PRINT #15, "}" 'end case
-    PRINT #15, "}"
-    PRINT #15, "error(3);" 'no valid return possible
+    PrintToBuffer 12, "}", 0
+    PrintToBuffer 15, "}", 0 'end case
+    PrintToBuffer 15, "}", 0
+    PrintToBuffer 15, "error(3);", 0 'no valid return possible
 
     closedmain = 1
 
@@ -13517,8 +13517,8 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
         'name will have include the sub/func name in its scope
         'variable/array will be created in main on startup
         defdatahandle = 18 'change from 13 to 18(global.txt)
-        CloseBuffer 13: OPEN tmpdir$ + "maindata.txt" , "APPEND", 13
-        CloseBuffer 19: OPEN tmpdir$ + "mainfree.txt" , "APPEND", 19
+        CloseBuffer 13: OpenBuffer tmpdir$ + "maindata.txt", "APPEND", 13
+        CloseBuffer 19: OpenBuffer tmpdir$ + "mainfree.txt", "APPEND", 19
     END IF
 
 
@@ -13601,30 +13601,30 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
                 bytes = bytes + 1
             END IF
             n$ = scope2$ + n$
-            IF f THEN PRINT #defdatahandle, "void *" + n$ + "=NULL;"
+            IF f THEN PrintToBuffer defdatahandle, "void *" + n$ + "=NULL;", 0
             clearid
             id.n = cvarname$
             id.t = UDTTYPE + i
             IF cmemlist(idn + 1) THEN
                 id.t = id.t + ISINCONVENTIONALMEMORY
                 IF f THEN
-                    PRINT #13, "if(" + n$ + "==NULL){"
-                    PRINT #13, "cmem_sp-=" + str2(bytes) + ";"
-                    PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
-                    PRINT #13, n$ + "=(void*)(dblock+cmem_sp);"
-                    PRINT #13, "memset(" + n$ + ",0," + str2(bytes) + ");"
-                    PRINT #13, "}"
+                    PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
+                    PrintToBuffer 13, "cmem_sp-=" + str2(bytes) + ";", 0
+                    PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
+                    PrintToBuffer 13, n$ + "=(void*)(dblock+cmem_sp);", 0
+                    PrintToBuffer 13, "memset(" + n$ + ",0," + str2(bytes) + ");", 0
+                    PrintToBuffer 13, "}", 0
                 END IF
             ELSE
                 IF f THEN
-                    PRINT #13, "if(" + n$ + "==NULL){"
-                    PRINT #13, n$ + "=(void*)mem_static_malloc(" + str2$(bytes) + ");"
-                    PRINT #13, "memset(" + n$ + ",0," + str2(bytes) + ");"
+                    PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
+                    PrintToBuffer 13, n$ + "=(void*)mem_static_malloc(" + str2$(bytes) + ");", 0
+                    PrintToBuffer 13, "memset(" + n$ + ",0," + str2(bytes) + ");", 0
                     IF udtxvariable(i) THEN
                         initialise_udt_varstrings n$, i, 13, 0
                         free_udt_varstrings n$, i, 19, 0
                     END IF
-                    PRINT #13, "}"
+                    PrintToBuffer 13, "}", 0
                 END IF
             END IF
             regid
@@ -13765,25 +13765,25 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
 
             'standard fixed length string
             n$ = scope2$ + n$
-            IF f THEN PRINT #defdatahandle, "qbs *" + n$ + "=NULL;"
-            IF f THEN PRINT #19, "qbs_free(" + n$ + ");" 'so descriptor can be freed
+            IF f THEN PrintToBuffer defdatahandle, "qbs *" + n$ + "=NULL;", 0
+            IF f THEN PrintToBuffer 19, "qbs_free(" + n$ + ");", 0 'so descriptor can be freed
             clearid
             id.n = cvarname$
             id.t = STRINGTYPE + ISFIXEDLENGTH
             IF cmemlist(idn + 1) THEN
                 id.t = id.t + ISINCONVENTIONALMEMORY
-                IF f THEN PRINT #13, "if(" + n$ + "==NULL){"
-                IF f THEN PRINT #13, "cmem_sp-=" + str2(bytes) + ";"
-                IF f THEN PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
-                IF f THEN PRINT #13, n$ + "=qbs_new_fixed((uint8*)(dblock+cmem_sp)," + str2(bytes) + ",0);"
-                IF f THEN PRINT #13, "memset(" + n$ + "->chr,0," + str2(bytes) + ");"
-                IF f THEN PRINT #13, "}"
+                IF f THEN PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
+                IF f THEN PrintToBuffer 13, "cmem_sp-=" + str2(bytes) + ";", 0
+                IF f THEN PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
+                IF f THEN PrintToBuffer 13, n$ + "=qbs_new_fixed((uint8*)(dblock+cmem_sp)," + str2(bytes) + ",0);", 0
+                IF f THEN PrintToBuffer 13, "memset(" + n$ + "->chr,0," + str2(bytes) + ");", 0
+                IF f THEN PrintToBuffer 13, "}", 0
             ELSE
-                IF f THEN PRINT #13, "if(" + n$ + "==NULL){"
+                IF f THEN PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
                 o$ = "(uint8*)mem_static_malloc(" + str2$(bytes) + ")"
-                IF f THEN PRINT #13, n$ + "=qbs_new_fixed(" + o$ + "," + str2$(bytes) + ",0);"
-                IF f THEN PRINT #13, "memset(" + n$ + "->chr,0," + str2$(bytes) + ");"
-                IF f THEN PRINT #13, "}"
+                IF f THEN PrintToBuffer 13, n$ + "=qbs_new_fixed(" + o$ + "," + str2$(bytes) + ",0);", 0
+                IF f THEN PrintToBuffer 13, "memset(" + n$ + "->chr,0," + str2$(bytes) + ");", 0
+                IF f THEN PrintToBuffer 13, "}", 0
             END IF
             id.tsize = bytes
             IF method = 0 THEN
@@ -13868,14 +13868,14 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
         id.n = cvarname$
         id.t = STRINGTYPE
         IF cmemlist(idn + 1) THEN
-            IF f THEN PRINT #defdatahandle, "qbs *" + n$ + "=NULL;"
-            IF f THEN PRINT #13, "if (!" + n$ + ")" + n$ + "=qbs_new_cmem(0,0);"
+            IF f THEN PrintToBuffer defdatahandle, "qbs *" + n$ + "=NULL;", 0
+            IF f THEN PrintToBuffer 13, "if (!" + n$ + ")" + n$ + "=qbs_new_cmem(0,0);", 0
             id.t = id.t + ISINCONVENTIONALMEMORY
         ELSE
-            IF f THEN PRINT #defdatahandle, "qbs *" + n$ + "=NULL;"
-            IF f THEN PRINT #13, "if (!" + n$ + ")" + n$ + "=qbs_new(0,0);"
+            IF f THEN PrintToBuffer defdatahandle, "qbs *" + n$ + "=NULL;", 0
+            IF f THEN PrintToBuffer 13, "if (!" + n$ + ")" + n$ + "=qbs_new(0,0);", 0
         END IF
-        IF f THEN PRINT #19, "qbs_free(" + n$ + ");"
+        IF f THEN PrintToBuffer 19, "qbs_free(" + n$ + ");", 0
         IF method = 0 THEN
             id.mayhave = "$"
         END IF
@@ -13969,13 +13969,13 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
         END IF
         'standard bit-length variable
         n$ = scope2$ + n$
-        PRINT #defdatahandle, ct$ + " *" + n$ + "=NULL;"
-        PRINT #13, "if(" + n$ + "==NULL){"
-        PRINT #13, "cmem_sp-=4;"
-        PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
-        PRINT #13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);"
-        PRINT #13, "*" + n$ + "=0;"
-        PRINT #13, "}"
+        PrintToBuffer defdatahandle, ct$ + " *" + n$ + "=NULL;", 0
+        PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
+        PrintToBuffer 13, "cmem_sp-=4;", 0
+        PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
+        PrintToBuffer 13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);", 0
+        PrintToBuffer 13, "*" + n$ + "=0;", 0
+        PrintToBuffer 13, "}", 0
         clearid
         id.n = cvarname$
         id.t = BITTYPE - 1 + bits + ISINCONVENTIONALMEMORY: IF unsgn THEN id.t = id.t + ISUNSIGNED
@@ -14050,18 +14050,18 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
             n$ = scope2$ + n$
             clearid
             id.t = BYTETYPE: IF unsgn THEN id.t = id.t + ISUNSIGNED
-            IF f = 1 THEN PRINT #defdatahandle, ct$ + " *" + n$ + "=NULL;"
-            IF f = 1 THEN PRINT #13, "if(" + n$ + "==NULL){"
+            IF f = 1 THEN PrintToBuffer defdatahandle, ct$ + " *" + n$ + "=NULL;", 0
+            IF f = 1 THEN PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
             IF cmemlist(idn + 1) THEN
                 id.t = id.t + ISINCONVENTIONALMEMORY
-                IF f = 1 THEN PRINT #13, "cmem_sp-=1;"
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);"
-                IF f = 1 THEN PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
+                IF f = 1 THEN PrintToBuffer 13, "cmem_sp-=1;", 0
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);", 0
+                IF f = 1 THEN PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
             ELSE
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)mem_static_malloc(1);"
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)mem_static_malloc(1);", 0
             END IF
-            IF f = 1 THEN PRINT #13, "*" + n$ + "=0;"
-            IF f = 1 THEN PRINT #13, "}"
+            IF f = 1 THEN PrintToBuffer 13, "*" + n$ + "=0;", 0
+            IF f = 1 THEN PrintToBuffer 13, "}", 0
         END IF
         id.n = cvarname$
         IF method = 0 THEN
@@ -14132,18 +14132,18 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
             n$ = scope2$ + n$
             clearid
             id.t = INTEGERTYPE: IF unsgn THEN id.t = id.t + ISUNSIGNED
-            IF f = 1 THEN PRINT #defdatahandle, ct$ + " *" + n$ + "=NULL;"
-            IF f = 1 THEN PRINT #13, "if(" + n$ + "==NULL){"
+            IF f = 1 THEN PrintToBuffer defdatahandle, ct$ + " *" + n$ + "=NULL;", 0
+            IF f = 1 THEN PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
             IF cmemlist(idn + 1) THEN
                 id.t = id.t + ISINCONVENTIONALMEMORY
-                IF f = 1 THEN PRINT #13, "cmem_sp-=2;"
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);"
-                IF f = 1 THEN PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
+                IF f = 1 THEN PrintToBuffer 13, "cmem_sp-=2;", 0
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);", 0
+                IF f = 1 THEN PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
             ELSE
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)mem_static_malloc(2);"
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)mem_static_malloc(2);", 0
             END IF
-            IF f = 1 THEN PRINT #13, "*" + n$ + "=0;"
-            IF f = 1 THEN PRINT #13, "}"
+            IF f = 1 THEN PrintToBuffer 13, "*" + n$ + "=0;", 0
+            IF f = 1 THEN PrintToBuffer 13, "}", 0
         END IF
         id.n = cvarname$
         IF method = 0 THEN
@@ -14219,18 +14219,18 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
             n$ = scope2$ + n$
             clearid
             id.t = OFFSETTYPE: IF unsgn THEN id.t = id.t + ISUNSIGNED
-            IF f = 1 THEN PRINT #defdatahandle, ct$ + " *" + n$ + "=NULL;"
-            IF f = 1 THEN PRINT #13, "if(" + n$ + "==NULL){"
+            IF f = 1 THEN PrintToBuffer defdatahandle, ct$ + " *" + n$ + "=NULL;", 0
+            IF f = 1 THEN PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
             IF cmemlist(idn + 1) THEN
                 id.t = id.t + ISINCONVENTIONALMEMORY
-                IF f = 1 THEN PRINT #13, "cmem_sp-=" + str2(OS_BITS \ 8) + ";"
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);"
-                IF f = 1 THEN PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
+                IF f = 1 THEN PrintToBuffer 13, "cmem_sp-=" + str2(OS_BITS \ 8) + ";", 0
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);", 0
+                IF f = 1 THEN PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
             ELSE
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)mem_static_malloc(" + str2(OS_BITS \ 8) + ");"
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)mem_static_malloc(" + str2(OS_BITS \ 8) + ");", 0
             END IF
-            IF f = 1 THEN PRINT #13, "*" + n$ + "=0;"
-            IF f = 1 THEN PRINT #13, "}"
+            IF f = 1 THEN PrintToBuffer 13, "*" + n$ + "=0;", 0
+            IF f = 1 THEN PrintToBuffer 13, "}", 0
         END IF
         id.n = cvarname$
         IF method = 0 THEN
@@ -14303,18 +14303,18 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
             n$ = scope2$ + n$
             clearid
             id.t = LONGTYPE: IF unsgn THEN id.t = id.t + ISUNSIGNED
-            IF f = 1 THEN PRINT #defdatahandle, ct$ + " *" + n$ + "=NULL;"
-            IF f = 1 THEN PRINT #13, "if(" + n$ + "==NULL){"
+            IF f = 1 THEN PrintToBuffer defdatahandle, ct$ + " *" + n$ + "=NULL;", 0
+            IF f = 1 THEN PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
             IF cmemlist(idn + 1) THEN
                 id.t = id.t + ISINCONVENTIONALMEMORY
-                IF f = 1 THEN PRINT #13, "cmem_sp-=4;"
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);"
-                IF f = 1 THEN PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
+                IF f = 1 THEN PrintToBuffer 13, "cmem_sp-=4;", 0
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);", 0
+                IF f = 1 THEN PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
             ELSE
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)mem_static_malloc(4);"
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)mem_static_malloc(4);", 0
             END IF
-            IF f = 1 THEN PRINT #13, "*" + n$ + "=0;"
-            IF f = 1 THEN PRINT #13, "}"
+            IF f = 1 THEN PrintToBuffer 13, "*" + n$ + "=0;", 0
+            IF f = 1 THEN PrintToBuffer 13, "}", 0
         END IF
         id.n = cvarname$
         IF method = 0 THEN
@@ -14387,18 +14387,18 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
             n$ = scope2$ + n$
             clearid
             id.t = INTEGER64TYPE: IF unsgn THEN id.t = id.t + ISUNSIGNED
-            IF f = 1 THEN PRINT #defdatahandle, ct$ + " *" + n$ + "=NULL;"
-            IF f = 1 THEN PRINT #13, "if(" + n$ + "==NULL){"
+            IF f = 1 THEN PrintToBuffer defdatahandle, ct$ + " *" + n$ + "=NULL;", 0
+            IF f = 1 THEN PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
             IF cmemlist(idn + 1) THEN
                 id.t = id.t + ISINCONVENTIONALMEMORY
-                IF f = 1 THEN PRINT #13, "cmem_sp-=8;"
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);"
-                IF f = 1 THEN PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
+                IF f = 1 THEN PrintToBuffer 13, "cmem_sp-=8;", 0
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);", 0
+                IF f = 1 THEN PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
             ELSE
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)mem_static_malloc(8);"
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)mem_static_malloc(8);", 0
             END IF
-            IF f = 1 THEN PRINT #13, "*" + n$ + "=0;"
-            IF f = 1 THEN PRINT #13, "}"
+            IF f = 1 THEN PrintToBuffer 13, "*" + n$ + "=0;", 0
+            IF f = 1 THEN PrintToBuffer 13, "}", 0
         END IF
         id.n = cvarname$
         IF method = 0 THEN
@@ -14471,18 +14471,18 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
             n$ = scope2$ + n$
             clearid
             id.t = SINGLETYPE
-            IF f = 1 THEN PRINT #defdatahandle, ct$ + " *" + n$ + "=NULL;"
-            IF f = 1 THEN PRINT #13, "if(" + n$ + "==NULL){"
+            IF f = 1 THEN PrintToBuffer defdatahandle, ct$ + " *" + n$ + "=NULL;", 0
+            IF f = 1 THEN PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
             IF cmemlist(idn + 1) THEN
                 id.t = id.t + ISINCONVENTIONALMEMORY
-                IF f = 1 THEN PRINT #13, "cmem_sp-=4;"
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);"
-                IF f = 1 THEN PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
+                IF f = 1 THEN PrintToBuffer 13, "cmem_sp-=4;", 0
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);", 0
+                IF f = 1 THEN PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
             ELSE
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)mem_static_malloc(4);"
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)mem_static_malloc(4);", 0
             END IF
-            IF f = 1 THEN PRINT #13, "*" + n$ + "=0;"
-            IF f = 1 THEN PRINT #13, "}"
+            IF f = 1 THEN PrintToBuffer 13, "*" + n$ + "=0;", 0
+            IF f = 1 THEN PrintToBuffer 13, "}", 0
         END IF
         id.n = cvarname$
         IF method = 0 THEN
@@ -14553,18 +14553,18 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
             n$ = scope2$ + n$
             clearid
             id.t = DOUBLETYPE
-            IF f = 1 THEN PRINT #defdatahandle, ct$ + " *" + n$ + "=NULL;"
-            IF f = 1 THEN PRINT #13, "if(" + n$ + "==NULL){"
+            IF f = 1 THEN PrintToBuffer defdatahandle, ct$ + " *" + n$ + "=NULL;", 0
+            IF f = 1 THEN PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
             IF cmemlist(idn + 1) THEN
                 id.t = id.t + ISINCONVENTIONALMEMORY
-                IF f = 1 THEN PRINT #13, "cmem_sp-=8;"
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);"
-                IF f = 1 THEN PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
+                IF f = 1 THEN PrintToBuffer 13, "cmem_sp-=8;", 0
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);", 0
+                IF f = 1 THEN PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
             ELSE
-                IF f = 1 THEN PRINT #13, n$ + "=(" + ct$ + "*)mem_static_malloc(8);"
+                IF f = 1 THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)mem_static_malloc(8);", 0
             END IF
-            IF f = 1 THEN PRINT #13, "*" + n$ + "=0;"
-            IF f = 1 THEN PRINT #13, "}"
+            IF f = 1 THEN PrintToBuffer 13, "*" + n$ + "=0;", 0
+            IF f = 1 THEN PrintToBuffer 13, "}", 0
         END IF
         id.n = cvarname$
         IF method = 0 THEN
@@ -14635,18 +14635,18 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
             n$ = scope2$ + n$
             clearid
             id.t = FLOATTYPE
-            IF f THEN PRINT #defdatahandle, ct$ + " *" + n$ + "=NULL;"
-            IF f THEN PRINT #13, "if(" + n$ + "==NULL){"
+            IF f THEN PrintToBuffer defdatahandle, ct$ + " *" + n$ + "=NULL;", 0
+            IF f THEN PrintToBuffer 13, "if(" + n$ + "==NULL){", 0
             IF cmemlist(idn + 1) THEN
                 id.t = id.t + ISINCONVENTIONALMEMORY
-                IF f THEN PRINT #13, "cmem_sp-=32;"
-                IF f THEN PRINT #13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);"
-                IF f THEN PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
+                IF f THEN PrintToBuffer 13, "cmem_sp-=32;", 0
+                IF f THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)(dblock+cmem_sp);", 0
+                IF f THEN PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
             ELSE
-                IF f THEN PRINT #13, n$ + "=(" + ct$ + "*)mem_static_malloc(32);"
+                IF f THEN PrintToBuffer 13, n$ + "=(" + ct$ + "*)mem_static_malloc(32);", 0
             END IF
-            IF f THEN PRINT #13, "*" + n$ + "=0;"
-            IF f THEN PRINT #13, "}"
+            IF f THEN PrintToBuffer 13, "*" + n$ + "=0;", 0
+            IF f THEN PrintToBuffer 13, "}", 0
         END IF
         id.n = cvarname$
         IF method = 0 THEN
@@ -14676,8 +14676,8 @@ FUNCTION dim2 (varname$, typ2$, method, elements$)
     'restore STATIC state
     IF dimstatic <> 0 AND dimshared = 0 THEN
         defdatahandle = 13
-        CloseBuffer 13: OPEN tmpdir$ + "data" + str2$(subfuncn) + ".txt" , "APPEND", 13
-        CloseBuffer 19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" , "APPEND", 19
+        CloseBuffer 13: OpenBuffer tmpdir$ + "data" + str2$(subfuncn) + ".txt", "APPEND", 13
+        CloseBuffer 19: OpenBuffer tmpdir$ + "free" + str2$(subfuncn) + ".txt", "APPEND", 19
     END IF
 
     tlayout$ = l$
@@ -15791,10 +15791,10 @@ FUNCTION evaluatefunc$ (a2$, args AS LONG, typ AS LONG)
                 END IF
 
 
-                'PRINT #12, "n$="; n$
-                'PRINT #12, "curarg="; curarg
-                'PRINT #12, "e$="; e$
-                'PRINT #12, "r$="; r$
+                'PrintToBuffer 12, "n$="; n$
+                'PrintToBuffer 12, "curarg="; curarg
+                'PrintToBuffer 12, "e$="; e$
+                'PrintToBuffer 12, "r$="; r$
 
                 '*special case*
                 IF n$ = "_MEMGET" OR (n$ = "MEMGET" AND qb64prefix_set = 1) THEN
@@ -16867,15 +16867,15 @@ FUNCTION evaluatefunc$ (a2$, args AS LONG, typ AS LONG)
                     'assume numeric type
                     IF MID$(sfcmemargs(targetid), curarg, 1) = CHR$(1) THEN 'cmem required?
                         bytesreq = ((targettyp AND 511) + 7) \ 8
-                        PRINT #defdatahandle, t$ + " *" + v$ + "=NULL;"
-                        PRINT #13, "if(" + v$ + "==NULL){"
-                        PRINT #13, "cmem_sp-=" + str2(bytesreq) + ";"
-                        PRINT #13, v$ + "=(" + t$ + "*)(dblock+cmem_sp);"
-                        PRINT #13, "if (cmem_sp<qbs_cmem_sp) error(257);"
-                        PRINT #13, "}"
+                        PrintToBuffer defdatahandle, t$ + " *" + v$ + "=NULL;", 0
+                        PrintToBuffer 13, "if(" + v$ + "==NULL){", 0
+                        PrintToBuffer 13, "cmem_sp-=" + str2(bytesreq) + ";", 0
+                        PrintToBuffer 13, v$ + "=(" + t$ + "*)(dblock+cmem_sp);", 0
+                        PrintToBuffer 13, "if (cmem_sp<qbs_cmem_sp) error(257);", 0
+                        PrintToBuffer 13, "}", 0
                         e$ = "&(*" + v$ + "=" + e$ + ")"
                     ELSE
-                        PRINT #13, t$ + " " + v$ + ";"
+                        PrintToBuffer 13, t$ + " " + v$ + ";", 0
                         e$ = "&(" + v$ + "=" + e$ + ")"
                     END IF
                     GOTO dontevaluate
@@ -16967,7 +16967,7 @@ FUNCTION evaluatefunc$ (a2$, args AS LONG, typ AS LONG)
     IF id2.ret = ISUDT + (1) THEN
         '***special case***
         v$ = "func" + str2$(uniquenumber)
-        PRINT #defdatahandle, "mem_block " + v$ + ";"
+        PrintToBuffer defdatahandle, "mem_block " + v$ + ";", 0
         r$ = "(" + v$ + "=" + r$ + ")"
     END IF
 
@@ -21307,8 +21307,8 @@ SUB setrefer (a2$, typ2 AS LONG, e2$, method AS LONG)
             END IF
             IF method = 0 THEN e$ = evaluatetotyp(e$, STRINGTYPE - ISPOINTER)
             IF Error_Happened THEN EXIT SUB
-            PRINT #12, "qbs_set(" + r$ + "," + e$ + ");"
-            PRINT #12, cleanupstringprocessingcall$ + "0);"
+            PrintToBuffer 12, "qbs_set(" + r$ + "," + e$ + ");", 0
+            PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
         ELSE
             typ = typ - ISUDT - ISREFERENCE - ISPOINTER
             IF typ AND ISARRAY THEN typ = typ - ISARRAY
@@ -21318,7 +21318,7 @@ SUB setrefer (a2$, typ2 AS LONG, e2$, method AS LONG)
             r$ = "*" + "(" + t$ + "*)" + o2$
             IF method = 0 THEN e$ = evaluatetotyp(e$, typ)
             IF Error_Happened THEN EXIT SUB
-            PRINT #12, r$ + "=" + e$ + ";"
+            PrintToBuffer 12, r$ + "=" + e$ + ";", 0
         END IF
 
         'print "setUDTrefer:"+r$,e$
@@ -21338,25 +21338,25 @@ SUB setrefer (a2$, typ2 AS LONG, e2$, method AS LONG)
             IF (typ AND ISFIXEDLENGTH) THEN
                 offset$ = "&((uint8*)(" + n$ + "[0]))[tmp_long*" + str2(id.tsize) + "]"
                 r$ = "qbs_new_fixed(" + offset$ + "," + str2(id.tsize) + ",1)"
-                PRINT #12, "tmp_long=" + a$ + ";"
+                PrintToBuffer 12, "tmp_long=" + a$ + ";", 0
                 IF method = 0 THEN
                     l$ = "if (!new_error) qbs_set(" + r$ + "," + evaluatetotyp(e$, typ) + ");"
                     IF Error_Happened THEN EXIT SUB
                 ELSE
                     l$ = "if (!new_error) qbs_set(" + r$ + "," + e$ + ");"
                 END IF
-                PRINT #12, l$
+                PrintToBuffer 12, l$, 0
             ELSE
-                PRINT #12, "tmp_long=" + a$ + ";"
+                PrintToBuffer 12, "tmp_long=" + a$ + ";", 0
                 IF method = 0 THEN
                     l$ = "if (!new_error) qbs_set( ((qbs*)(((uint64*)(" + n$ + "[0]))[tmp_long]))," + evaluatetotyp(e$, typ) + ");"
                     IF Error_Happened THEN EXIT SUB
                 ELSE
                     l$ = "if (!new_error) qbs_set( ((qbs*)(((uint64*)(" + n$ + "[0]))[tmp_long]))," + e$ + ");"
                 END IF
-                PRINT #12, l$
+                PrintToBuffer 12, l$, 0
             END IF
-            PRINT #12, cleanupstringprocessingcall$ + "0);"
+            PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
             tlayout$ = tl$
             IF LEFT$(r$, 1) = "*" THEN r$ = MID$(r$, 2)
             manageVariableList "", r$, 8
@@ -21367,14 +21367,14 @@ SUB setrefer (a2$, typ2 AS LONG, e2$, method AS LONG)
             'r$ = "setbits_" + str2(typ AND 511) + "("
             r$ = "setbits(" + str2(typ AND 511) + ","
             r$ = r$ + "(uint8*)(" + n$ + "[0])" + ",tmp_long,"
-            PRINT #12, "tmp_long=" + a$ + ";"
+            PrintToBuffer 12, "tmp_long=" + a$ + ";", 0
             IF method = 0 THEN
                 l$ = "if (!new_error) " + r$ + evaluatetotyp(e$, typ) + ");"
                 IF Error_Happened THEN EXIT SUB
             ELSE
                 l$ = "if (!new_error) " + r$ + e$ + ");"
             END IF
-            PRINT #12, l$
+            PrintToBuffer 12, l$, 0
             tlayout$ = tl$
             EXIT SUB
         ELSE
@@ -21400,7 +21400,7 @@ SUB setrefer (a2$, typ2 AS LONG, e2$, method AS LONG)
             END IF
         END IF
         IF t$ = "" THEN Give_Error "Cannot find C type to return array data": EXIT SUB
-        PRINT #12, "tmp_long=" + a$ + ";"
+        PrintToBuffer 12, "tmp_long=" + a$ + ";", 0
         IF method = 0 THEN
             l$ = "if (!new_error) ((" + t$ + "*)(" + n$ + "[0]))[tmp_long]=" + evaluatetotyp(e$, typ) + ";"
             IF Error_Happened THEN EXIT SUB
@@ -21408,7 +21408,7 @@ SUB setrefer (a2$, typ2 AS LONG, e2$, method AS LONG)
             l$ = "if (!new_error) ((" + t$ + "*)(" + n$ + "[0]))[tmp_long]=" + e$ + ";"
         END IF
 
-        PRINT #12, l$
+        PrintToBuffer 12, l$, 0
         tlayout$ = tl$
         EXIT SUB
     END IF 'array
@@ -21430,8 +21430,8 @@ SUB setrefer (a2$, typ2 AS LONG, e2$, method AS LONG)
             END IF
             IF method = 0 THEN e$ = evaluatetotyp(e$, ISSTRING)
             IF Error_Happened THEN EXIT SUB
-            PRINT #12, "qbs_set(" + r$ + "," + e$ + ");"
-            PRINT #12, cleanupstringprocessingcall$ + "0);"
+            PrintToBuffer 12, "qbs_set(" + r$ + "," + e$ + ");", 0
+            PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
             IF arrayprocessinghappened THEN arrayprocessinghappened = 0
             tlayout$ = tl$
             IF LEFT$(r$, 1) = "*" THEN r$ = MID$(r$, 2)
@@ -21447,23 +21447,23 @@ SUB setrefer (a2$, typ2 AS LONG, e2$, method AS LONG)
                 IF method = 0 THEN e$ = evaluatetotyp(e$, 64& + ISUNSIGNED)
                 IF Error_Happened THEN EXIT SUB
                 l$ = r$ + "=(" + e$ + ")&" + str2(bitmask(b)) + ";"
-                PRINT #12, l$
+                PrintToBuffer 12, l$, 0
             ELSE
                 r$ = "*" + scope$ + "BIT" + str2(t AND 511) + "_" + r$
                 IF method = 0 THEN e$ = evaluatetotyp(e$, 64&)
                 IF Error_Happened THEN EXIT SUB
                 l$ = "if ((" + r$ + "=" + e$ + ")&" + str2(2 ^ (b - 1)) + "){"
-                PRINT #12, l$
+                PrintToBuffer 12, l$, 0
                 'signed bit is set
                 l$ = r$ + "|=" + str2(bitmaskinv(b)) + ";"
-                PRINT #12, l$
-                PRINT #12, "}else{"
+                PrintToBuffer 12, l$, 0
+                PrintToBuffer 12, "}else{", 0
                 'signed bit is not set
                 l$ = r$ + "&=" + str2(bitmask(b)) + ";"
-                PRINT #12, l$
-                PRINT #12, "}"
+                PrintToBuffer 12, l$, 0
+                PrintToBuffer 12, "}", 0
             END IF
-            IF stringprocessinghappened THEN PRINT #12, cleanupstringprocessingcall$ + "0);": stringprocessinghappened = 0
+            IF stringprocessinghappened THEN PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0: stringprocessinghappened = 0
             IF arrayprocessinghappened THEN arrayprocessinghappened = 0
             tlayout$ = tl$
             IF LEFT$(r$, 1) = "*" THEN r$ = MID$(r$, 2)
@@ -21490,8 +21490,8 @@ SUB setrefer (a2$, typ2 AS LONG, e2$, method AS LONG)
         IF method = 0 THEN e$ = evaluatetotyp(e$, t2)
         IF Error_Happened THEN EXIT SUB
         l$ = r$ + "=" + e$ + ";"
-        PRINT #12, l$
-        IF stringprocessinghappened THEN PRINT #12, cleanupstringprocessingcall$ + "0);": stringprocessinghappened = 0
+        PrintToBuffer 12, l$, 0
+        IF stringprocessinghappened THEN PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0: stringprocessinghappened = 0
         IF arrayprocessinghappened THEN arrayprocessinghappened = 0
         tlayout$ = tl$
 
@@ -21952,12 +21952,12 @@ END FUNCTION
 
 SUB xend
 
-    PRINT #12, "sub_end();"
+    PrintToBuffer 12, "sub_end();", 0
 END SUB
 
 SUB xfileprint (a$, ca$, n)
     u$ = str2$(uniquenumber)
-    PRINT #12, "tab_spc_cr_size=2;"
+    PrintToBuffer 12, "tab_spc_cr_size=2;", 0
     IF n = 2 THEN Give_Error "Expected # ... , ...": EXIT SUB
     a3$ = ""
     b = 0
@@ -21978,8 +21978,8 @@ SUB xfileprint (a$, ca$, n)
     l$ = "PRINT" + sp + "#" + sp2 + tlayout$ + sp2 + ","
     e$ = evaluatetotyp(e$, 64&)
     IF Error_Happened THEN EXIT SUB
-    PRINT #12, "tab_fileno=tmp_fileno=" + e$ + ";"
-    PRINT #12, "if (new_error) goto skip" + u$ + ";"
+    PrintToBuffer 12, "tab_fileno=tmp_fileno=" + e$ + ";", 0
+    PrintToBuffer 12, "if (new_error) goto skip" + u$ + ";", 0
     i = i + 1
 
     'PRINT USING? (file)
@@ -22013,18 +22013,18 @@ SUB xfileprint (a$, ca$, n)
             IF puformat$ = "" THEN Give_Error "Expected PRINT USING #filenumber, formatstring ; ...": EXIT SUB
             IF i = n THEN Give_Error "Expected PRINT USING #filenumber, formatstring ; ...": EXIT SUB
             'create build string
-            PRINT #12, "tqbs=qbs_new(0,0);"
+            PrintToBuffer 12, "tqbs=qbs_new(0,0);", 0
             'set format start/index variable
-            PRINT #12, "tmp_long=0;" 'scan format from beginning
+            PrintToBuffer 12, "tmp_long=0;", 0 'scan format from beginning
             'create string to hold format in for multiple references
             puf$ = "print_using_format" + u$
             IF subfunc = "" THEN
-                PRINT #13, "static qbs *" + puf$ + ";"
+                PrintToBuffer 13, "static qbs *" + puf$ + ";", 0
             ELSE
-                PRINT #13, "qbs *" + puf$ + ";"
+                PrintToBuffer 13, "qbs *" + puf$ + ";", 0
             END IF
-            PRINT #12, puf$ + "=qbs_new(0,0); qbs_set(" + puf$ + "," + puformat$ + ");"
-            PRINT #12, "if (new_error) goto skip" + u$ + ";"
+            PrintToBuffer 12, puf$ + "=qbs_new(0,0); qbs_set(" + puf$ + "," + puformat$ + ");", 0
+            PrintToBuffer 12, "if (new_error) goto skip" + u$ + ";", 0
             'print expressions
             b = 0
             e$ = ""
@@ -22050,35 +22050,35 @@ SUB xfileprint (a$, ca$, n)
                                 'TAB/SPC exception
                                 'note: position in format-string must be maintained
                                 '-print any string up until now
-                                PRINT #12, "sub_file_print(tmp_fileno,tqbs,0,0,0);"
+                                PrintToBuffer 12, "sub_file_print(tmp_fileno,tqbs,0,0,0);", 0
                                 '-print e$
-                                PRINT #12, "qbs_set(tqbs," + e$ + ");"
-                                PRINT #12, "if (new_error) goto skip_pu" + u$ + ";"
-                                PRINT #12, "sub_file_print(tmp_fileno,tqbs,0,0,0);"
+                                PrintToBuffer 12, "qbs_set(tqbs," + e$ + ");", 0
+                                PrintToBuffer 12, "if (new_error) goto skip_pu" + u$ + ";", 0
+                                PrintToBuffer 12, "sub_file_print(tmp_fileno,tqbs,0,0,0);", 0
                                 '-set length of tqbs to 0
-                                PRINT #12, "tqbs->len=0;"
+                                PrintToBuffer 12, "tqbs->len=0;", 0
 
                             ELSE
 
                                 'regular string
-                                PRINT #12, "tmp_long=print_using(" + puf$ + ",tmp_long,tqbs," + e$ + ");"
+                                PrintToBuffer 12, "tmp_long=print_using(" + puf$ + ",tmp_long,tqbs," + e$ + ");", 0
 
                             END IF
 
                         ELSE 'not a string
                             IF typ AND ISFLOAT THEN
-                                IF (typ AND 511) = 32 THEN PRINT #12, "tmp_long=print_using_single(" + puf$ + "," + e$ + ",tmp_long,tqbs);"
-                                IF (typ AND 511) = 64 THEN PRINT #12, "tmp_long=print_using_double(" + puf$ + "," + e$ + ",tmp_long,tqbs);"
-                                IF (typ AND 511) > 64 THEN PRINT #12, "tmp_long=print_using_float(" + puf$ + "," + e$ + ",tmp_long,tqbs);"
+                                IF (typ AND 511) = 32 THEN PrintToBuffer 12, "tmp_long=print_using_single(" + puf$ + "," + e$ + ",tmp_long,tqbs);", 0
+                                IF (typ AND 511) = 64 THEN PrintToBuffer 12, "tmp_long=print_using_double(" + puf$ + "," + e$ + ",tmp_long,tqbs);", 0
+                                IF (typ AND 511) > 64 THEN PrintToBuffer 12, "tmp_long=print_using_float(" + puf$ + "," + e$ + ",tmp_long,tqbs);", 0
                             ELSE
                                 IF ((typ AND 511) = 64) AND (typ AND ISUNSIGNED) <> 0 THEN
-                                    PRINT #12, "tmp_long=print_using_uinteger64(" + puf$ + "," + e$ + ",tmp_long,tqbs);"
+                                    PrintToBuffer 12, "tmp_long=print_using_uinteger64(" + puf$ + "," + e$ + ",tmp_long,tqbs);", 0
                                 ELSE
-                                    PRINT #12, "tmp_long=print_using_integer64(" + puf$ + "," + e$ + ",tmp_long,tqbs);"
+                                    PrintToBuffer 12, "tmp_long=print_using_integer64(" + puf$ + "," + e$ + ",tmp_long,tqbs);", 0
                                 END IF
                             END IF
                         END IF 'string/not string
-                        PRINT #12, "if (new_error) goto skip_pu" + u$ + ";"
+                        PrintToBuffer 12, "if (new_error) goto skip_pu" + u$ + ";", 0
                         e$ = ""
                         IF last THEN EXIT FOR
                         GOTO fprintunext
@@ -22088,19 +22088,19 @@ SUB xfileprint (a$, ca$, n)
                 fprintunext:
             NEXT
             IF e$ <> "" THEN a2$ = "": last = 1: GOTO fprintulast
-            PRINT #12, "skip_pu" + u$ + ":"
+            PrintToBuffer 12, "skip_pu" + u$ + ":", 0
             'check for errors
-            PRINT #12, "if (new_error){"
-            PRINT #12, "g_tmp_long=new_error; new_error=0; sub_file_print(tmp_fileno,tqbs,0,0,0); new_error=g_tmp_long;"
-            PRINT #12, "}else{"
+            PrintToBuffer 12, "if (new_error){", 0
+            PrintToBuffer 12, "g_tmp_long=new_error; new_error=0; sub_file_print(tmp_fileno,tqbs,0,0,0); new_error=g_tmp_long;", 0
+            PrintToBuffer 12, "}else{", 0
             IF a2$ = "," OR a2$ = ";" THEN nl = 0 ELSE nl = 1 'note: a2$ is set to the last element of a$
-            PRINT #12, "sub_file_print(tmp_fileno,tqbs,0,0," + str2$(nl) + ");"
-            PRINT #12, "}"
-            PRINT #12, "qbs_free(tqbs);"
-            PRINT #12, "qbs_free(" + puf$ + ");"
-            PRINT #12, "skip" + u$ + ":"
-            PRINT #12, cleanupstringprocessingcall$ + "0);"
-            PRINT #12, "tab_spc_cr_size=1;"
+            PrintToBuffer 12, "sub_file_print(tmp_fileno,tqbs,0,0," + str2$(nl) + ");", 0
+            PrintToBuffer 12, "}", 0
+            PrintToBuffer 12, "qbs_free(tqbs);", 0
+            PrintToBuffer 12, "qbs_free(" + puf$ + ");", 0
+            PrintToBuffer 12, "skip" + u$ + ":", 0
+            PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
+            PrintToBuffer 12, "tab_spc_cr_size=1;", 0
             tlayout$ = l$
             EXIT SUB
         END IF
@@ -22108,7 +22108,7 @@ SUB xfileprint (a$, ca$, n)
     'end of print using code
 
     IF i > n THEN
-        PRINT #12, "sub_file_print(tmp_fileno,nothingstring,0,0,1);"
+        PrintToBuffer 12, "sub_file_print(tmp_fileno,nothingstring,0,0,1);", 0
         GOTO printblankline
     END IF
     b = 0
@@ -22150,15 +22150,15 @@ SUB xfileprint (a$, ca$, n)
                     IF (typ AND ISREFERENCE) THEN e$ = refer(e$, typ, 0)
                     IF Error_Happened THEN EXIT SUB
                     'format: string, (1/0) extraspace, (1/0) tab, (1/0)begin a new line
-                    PRINT #12, "sub_file_print(tmp_fileno," + e$ + ","; extraspace; ","; usetab; ","; newline; ");"
+                    PrintToBuffer 12, "sub_file_print(tmp_fileno," + e$ + "," + STR$(extraspace) + "," + STR$(usetab) + "," + STR$(newline) + ");", 0
                 ELSE 'len(e$)=0
                     IF a2$ = "," THEN l$ = l$ + sp + a2$
                     IF a2$ = ";" THEN
                         IF RIGHT$(l$, 1) <> ";" THEN l$ = l$ + sp + a2$ 'concat ;; to ;
                     END IF
-                    IF usetab THEN PRINT #12, "sub_file_print(tmp_fileno,nothingstring,0,1,0);"
+                    IF usetab THEN PrintToBuffer 12, "sub_file_print(tmp_fileno,nothingstring,0,1,0);", 0
                 END IF 'len(e$)
-                PRINT #12, "if (new_error) goto skip" + u$ + ";"
+                PrintToBuffer 12, "if (new_error) goto skip" + u$ + ";", 0
 
                 e$ = ""
                 IF gotofpu THEN GOTO fpujump
@@ -22171,16 +22171,16 @@ SUB xfileprint (a$, ca$, n)
     NEXT
     IF e$ <> "" THEN a2$ = "": last = 1: GOTO printfilelast
     printblankline:
-    PRINT #12, "skip" + u$ + ":"
-    PRINT #12, cleanupstringprocessingcall$ + "0);"
-    PRINT #12, "tab_spc_cr_size=1;"
+    PrintToBuffer 12, "skip" + u$ + ":", 0
+    PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
+    PrintToBuffer 12, "tab_spc_cr_size=1;", 0
     tlayout$ = l$
 END SUB
 
 SUB xfilewrite (ca$, n)
     l$ = "WRITE" + sp + "#"
     u$ = str2$(uniquenumber)
-    PRINT #12, "tab_spc_cr_size=2;"
+    PrintToBuffer 12, "tab_spc_cr_size=2;", 0
     IF n = 2 THEN Give_Error "Expected # ...": EXIT SUB
     a3$ = ""
     b = 0
@@ -22201,11 +22201,11 @@ SUB xfilewrite (ca$, n)
     l$ = l$ + sp2 + tlayout$ + sp2 + ","
     e$ = evaluatetotyp(e$, 64&)
     IF Error_Happened THEN EXIT SUB
-    PRINT #12, "tab_fileno=tmp_fileno=" + e$ + ";"
-    PRINT #12, "if (new_error) goto skip" + u$ + ";"
+    PrintToBuffer 12, "tab_fileno=tmp_fileno=" + e$ + ";", 0
+    PrintToBuffer 12, "if (new_error) goto skip" + u$ + ";", 0
     i = i + 1
     IF i > n THEN
-        PRINT #12, "sub_file_print(tmp_fileno,nothingstring,0,0,1);"
+        PrintToBuffer 12, "sub_file_print(tmp_fileno,nothingstring,0,0,1);", 0
         GOTO writeblankline
     END IF
     b = 0
@@ -22246,8 +22246,8 @@ SUB xfilewrite (ca$, n)
                 IF (typ AND ISREFERENCE) THEN e$ = refer(e$, typ, 0)
                 IF Error_Happened THEN EXIT SUB
                 'format: string, (1/0) extraspace, (1/0) tab, (1/0)begin a new line
-                PRINT #12, "sub_file_print(tmp_fileno," + e$ + ",0,0,"; newline; ");"
-                PRINT #12, "if (new_error) goto skip" + u$ + ";"
+                PrintToBuffer 12, "sub_file_print(tmp_fileno," + e$ + ",0,0," + STR$(newline) + ");", 0
+                PrintToBuffer 12, "if (new_error) goto skip" + u$ + ";", 0
                 e$ = ""
                 IF last THEN EXIT FOR
                 GOTO writefilenext
@@ -22258,10 +22258,10 @@ SUB xfilewrite (ca$, n)
     NEXT
     IF e$ <> "" THEN a2$ = ",": last = 1: GOTO writefilelast
     writeblankline:
-    'print #12, "}"'new_error
-    PRINT #12, "skip" + u$ + ":"
-    PRINT #12, cleanupstringprocessingcall$ + "0);"
-    PRINT #12, "tab_spc_cr_size=1;"
+    'PrintToBuffer 12, "}"'new_error
+    PrintToBuffer 12, "skip" + u$ + ":", 0
+    PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
+    PrintToBuffer 12, "tab_spc_cr_size=1;", 0
     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
 END SUB
 
@@ -22298,14 +22298,14 @@ SUB xgosub (ca$)
     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
     'note: This code fragment also used by ON ... GOTO/GOSUB
     'assume label is reachable (revise)
-    PRINT #12, "return_point[next_return_point++]=" + str2(gosubid) + ";"
-    PRINT #12, "if (next_return_point>=return_points) more_return_points();"
-    PRINT #12, "goto LABEL_" + a2$ + ";"
+    PrintToBuffer 12, "return_point[next_return_point++]=" + str2(gosubid) + ";", 0
+    PrintToBuffer 12, "if (next_return_point>=return_points) more_return_points();", 0
+    PrintToBuffer 12, "goto LABEL_" + a2$ + ";", 0
     'add return point jump
-    PRINT #15, "case " + str2(gosubid) + ":"
-    PRINT #15, "goto RETURN_" + str2(gosubid) + ";"
-    PRINT #15, "break;"
-    PRINT #12, "RETURN_" + str2(gosubid) + ":;"
+    PrintToBuffer 15, "case " + str2(gosubid) + ":", 0
+    PrintToBuffer 15, "goto RETURN_" + str2(gosubid) + ";", 0
+    PrintToBuffer 15, "break;", 0
+    PrintToBuffer 12, "RETURN_" + str2(gosubid) + ":;", 0
     gosubid = gosubid + 1
 END SUB
 
@@ -22336,8 +22336,8 @@ SUB xongotogosub (a$, ca$, n)
     END IF
     l$ = l$ + sp + e2$
     u$ = str2$(uniquenumber)
-    PRINT #13, "static int32 ongo_" + u$ + "=0;"
-    PRINT #12, "ongo_" + u$ + "=" + e$ + ";"
+    PrintToBuffer 13, "static int32 ongo_" + u$ + "=0;", 0
+    PrintToBuffer 12, "ongo_" + u$ + "=" + e$ + ";", 0
     ln = 1
     labelwaslast = 0
     FOR i = i + 1 TO n
@@ -22379,28 +22379,28 @@ SUB xongotogosub (a$, ca$, n)
             l$ = l$ + sp + tlayout$
             IF g THEN 'gosub
                 lb$ = e$
-                PRINT #12, "if (ongo_" + u$ + "==" + str2$(ln) + "){"
+                PrintToBuffer 12, "if (ongo_" + u$ + "==" + str2$(ln) + "){", 0
                 'note: This code fragment also used by ON ... GOTO/GOSUB
                 'assume label is reachable (revise)
-                PRINT #12, "return_point[next_return_point++]=" + str2(gosubid) + ";"
-                PRINT #12, "if (next_return_point>=return_points) more_return_points();"
-                PRINT #12, "goto LABEL_" + lb$ + ";"
+                PrintToBuffer 12, "return_point[next_return_point++]=" + str2(gosubid) + ";", 0
+                PrintToBuffer 12, "if (next_return_point>=return_points) more_return_points();", 0
+                PrintToBuffer 12, "goto LABEL_" + lb$ + ";", 0
                 'add return point jump
-                PRINT #15, "case " + str2(gosubid) + ":"
-                PRINT #15, "goto RETURN_" + str2(gosubid) + ";"
-                PRINT #15, "break;"
-                PRINT #12, "RETURN_" + str2(gosubid) + ":;"
+                PrintToBuffer 15, "case " + str2(gosubid) + ":", 0
+                PrintToBuffer 15, "goto RETURN_" + str2(gosubid) + ";", 0
+                PrintToBuffer 15, "break;", 0
+                PrintToBuffer 12, "RETURN_" + str2(gosubid) + ":;", 0
                 gosubid = gosubid + 1
-                PRINT #12, "goto ongo_" + u$ + "_skip;"
-                PRINT #12, "}"
+                PrintToBuffer 12, "goto ongo_" + u$ + "_skip;", 0
+                PrintToBuffer 12, "}", 0
             ELSE 'goto
-                PRINT #12, "if (ongo_" + u$ + "==" + str2$(ln) + ") goto LABEL_" + e$ + ";"
+                PrintToBuffer 12, "if (ongo_" + u$ + "==" + str2$(ln) + ") goto LABEL_" + e$ + ";", 0
             END IF
             labelwaslast = 1
         END IF
     NEXT
-    PRINT #12, "if (ongo_" + u$ + "<0) error(5);"
-    IF g = 1 THEN PRINT #12, "ongo_" + u$ + "_skip:;"
+    PrintToBuffer 12, "if (ongo_" + u$ + "<0) error(5);", 0
+    IF g = 1 THEN PrintToBuffer 12, "ongo_" + u$ + "_skip:;", 0
     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
 END SUB
 
@@ -22408,7 +22408,7 @@ SUB xprint (a$, ca$, n)
     u$ = str2$(uniquenumber)
 
     l$ = "PRINT"
-    IF ASC(a$) = 76 THEN lp = 1: lp$ = "l": l$ = "LPRINT": PRINT #12, "tab_LPRINT=1;": DEPENDENCY(DEPENDENCY_PRINTER) = 1 '"L"
+    IF ASC(a$) = 76 THEN lp = 1: lp$ = "l": l$ = "LPRINT": PrintToBuffer 12, "tab_LPRINT=1;", 0: DEPENDENCY(DEPENDENCY_PRINTER) = 1 '"L"
 
     'PRINT USING?
     IF n >= 2 THEN
@@ -22443,23 +22443,23 @@ SUB xprint (a$, ca$, n)
             IF i = n THEN Give_Error "Expected PRINT USING formatstring ; ...": EXIT SUB
             'create build string
             IF TQBSset = 0 THEN
-                PRINT #12, "tqbs=qbs_new(0,0);"
+                PrintToBuffer 12, "tqbs=qbs_new(0,0);", 0
             ELSE
-                PRINT #12, "qbs_set(tqbs,qbs_new_txt_len(" + CHR$(34) + CHR$(34) + ",0));"
+                PrintToBuffer 12, "qbs_set(tqbs,qbs_new_txt_len(" + CHR$(34) + CHR$(34) + ",0));", 0
             END IF
             'set format start/index variable
-            PRINT #12, "tmp_long=0;" 'scan format from beginning
+            PrintToBuffer 12, "tmp_long=0;", 0 'scan format from beginning
 
 
             'create string to hold format in for multiple references
             puf$ = "print_using_format" + u$
             IF subfunc = "" THEN
-                PRINT #13, "static qbs *" + puf$ + ";"
+                PrintToBuffer 13, "static qbs *" + puf$ + ";", 0
             ELSE
-                PRINT #13, "qbs *" + puf$ + ";"
+                PrintToBuffer 13, "qbs *" + puf$ + ";", 0
             END IF
-            PRINT #12, puf$ + "=qbs_new(0,0); qbs_set(" + puf$ + "," + puformat$ + ");"
-            PRINT #12, "if (new_error) goto skip_pu" + u$ + ";"
+            PrintToBuffer 12, puf$ + "=qbs_new(0,0); qbs_set(" + puf$ + "," + puformat$ + ");", 0
+            PrintToBuffer 12, "if (new_error) goto skip_pu" + u$ + ";", 0
 
             'print expressions
             b = 0
@@ -22486,19 +22486,19 @@ SUB xprint (a$, ca$, n)
                                 'TAB/SPC exception
                                 'note: position in format-string must be maintained
                                 '-print any string up until now
-                                PRINT #12, "qbs_" + lp$ + "print(tqbs,0);"
+                                PrintToBuffer 12, "qbs_" + lp$ + "print(tqbs,0);", 0
                                 '-print e$
-                                PRINT #12, "qbs_set(tqbs," + e$ + ");"
-                                PRINT #12, "if (new_error) goto skip_pu" + u$ + ";"
-                                IF lp THEN PRINT #12, "lprint_makefit(tqbs);" ELSE PRINT #12, "makefit(tqbs);"
-                                PRINT #12, "qbs_" + lp$ + "print(tqbs,0);"
+                                PrintToBuffer 12, "qbs_set(tqbs," + e$ + ");", 0
+                                PrintToBuffer 12, "if (new_error) goto skip_pu" + u$ + ";", 0
+                                IF lp THEN PrintToBuffer 12, "lprint_makefit(tqbs);", 0 ELSE PrintToBuffer 12, "makefit(tqbs);", 0
+                                PrintToBuffer 12, "qbs_" + lp$ + "print(tqbs,0);", 0
                                 '-set length of tqbs to 0
-                                PRINT #12, "tqbs->len=0;"
+                                PrintToBuffer 12, "tqbs->len=0;", 0
 
                             ELSE
 
                                 'regular string
-                                PRINT #12, "tmp_long=print_using(" + puf$ + ",tmp_long,tqbs," + e$ + ");"
+                                PrintToBuffer 12, "tmp_long=print_using(" + puf$ + ",tmp_long,tqbs," + e$ + ");", 0
 
                             END IF
 
@@ -22506,18 +22506,18 @@ SUB xprint (a$, ca$, n)
 
                         ELSE 'not a string
                             IF typ AND ISFLOAT THEN
-                                IF (typ AND 511) = 32 THEN PRINT #12, "tmp_long=print_using_single(" + puf$ + "," + e$ + ",tmp_long,tqbs);"
-                                IF (typ AND 511) = 64 THEN PRINT #12, "tmp_long=print_using_double(" + puf$ + "," + e$ + ",tmp_long,tqbs);"
-                                IF (typ AND 511) > 64 THEN PRINT #12, "tmp_long=print_using_float(" + puf$ + "," + e$ + ",tmp_long,tqbs);"
+                                IF (typ AND 511) = 32 THEN PrintToBuffer 12, "tmp_long=print_using_single(" + puf$ + "," + e$ + ",tmp_long,tqbs);", 0
+                                IF (typ AND 511) = 64 THEN PrintToBuffer 12, "tmp_long=print_using_double(" + puf$ + "," + e$ + ",tmp_long,tqbs);", 0
+                                IF (typ AND 511) > 64 THEN PrintToBuffer 12, "tmp_long=print_using_float(" + puf$ + "," + e$ + ",tmp_long,tqbs);", 0
                             ELSE
                                 IF ((typ AND 511) = 64) AND (typ AND ISUNSIGNED) <> 0 THEN
-                                    PRINT #12, "tmp_long=print_using_uinteger64(" + puf$ + "," + e$ + ",tmp_long,tqbs);"
+                                    PrintToBuffer 12, "tmp_long=print_using_uinteger64(" + puf$ + "," + e$ + ",tmp_long,tqbs);", 0
                                 ELSE
-                                    PRINT #12, "tmp_long=print_using_integer64(" + puf$ + "," + e$ + ",tmp_long,tqbs);"
+                                    PrintToBuffer 12, "tmp_long=print_using_integer64(" + puf$ + "," + e$ + ",tmp_long,tqbs);", 0
                                 END IF
                             END IF
                         END IF 'string/not string
-                        PRINT #12, "if (new_error) goto skip_pu" + u$ + ";"
+                        PrintToBuffer 12, "if (new_error) goto skip_pu" + u$ + ";", 0
                         e$ = ""
                         IF last THEN EXIT FOR
                         GOTO printunext
@@ -22527,19 +22527,19 @@ SUB xprint (a$, ca$, n)
                 printunext:
             NEXT
             IF e$ <> "" THEN a2$ = "": last = 1: GOTO printulast
-            PRINT #12, "skip_pu" + u$ + ":"
+            PrintToBuffer 12, "skip_pu" + u$ + ":", 0
             'check for errors
-            PRINT #12, "if (new_error){"
-            PRINT #12, "g_tmp_long=new_error; new_error=0; qbs_" + lp$ + "print(tqbs,0); new_error=g_tmp_long;"
-            PRINT #12, "}else{"
+            PrintToBuffer 12, "if (new_error){", 0
+            PrintToBuffer 12, "g_tmp_long=new_error; new_error=0; qbs_" + lp$ + "print(tqbs,0); new_error=g_tmp_long;", 0
+            PrintToBuffer 12, "}else{", 0
             IF a2$ = "," OR a2$ = ";" THEN nl = 0 ELSE nl = 1 'note: a2$ is set to the last element of a$
-            PRINT #12, "qbs_" + lp$ + "print(tqbs," + str2$(nl) + ");"
-            PRINT #12, "}"
-            PRINT #12, "qbs_free(tqbs);"
-            PRINT #12, "qbs_free(" + puf$ + ");"
-            PRINT #12, "skip" + u$ + ":"
-            PRINT #12, cleanupstringprocessingcall$ + "0);"
-            IF lp THEN PRINT #12, "tab_LPRINT=0;"
+            PrintToBuffer 12, "qbs_" + lp$ + "print(tqbs," + str2$(nl) + ");", 0
+            PrintToBuffer 12, "}", 0
+            PrintToBuffer 12, "qbs_free(tqbs);", 0
+            PrintToBuffer 12, "qbs_free(" + puf$ + ");", 0
+            PrintToBuffer 12, "skip" + u$ + ":", 0
+            PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
+            IF lp THEN PrintToBuffer 12, "tab_LPRINT=0;", 0
             tlayout$ = l$
             EXIT SUB
         END IF
@@ -22549,7 +22549,7 @@ SUB xprint (a$, ca$, n)
     b = 0
     e$ = ""
     last = 0
-    PRINT #12, "tqbs=qbs_new(0,0);" 'initialize the temp string
+    PrintToBuffer 12, "tqbs=qbs_new(0,0);", 0 'initialize the temp string
     TQBSset = -1 'set the temporary flag so we don't create a temp string twice, in case USING comes after something
     FOR i = 2 TO n
         a2$ = getelement(ca$, i)
@@ -22582,23 +22582,23 @@ SUB xprint (a$, ca$, n)
                     END IF
                     IF (typ AND ISREFERENCE) THEN e$ = refer(e$, typ, 0)
                     IF Error_Happened THEN EXIT SUB
-                    PRINT #12, "qbs_set(tqbs," + e$ + ");"
-                    PRINT #12, "if (new_error) goto skip" + u$ + ";"
-                    IF lp THEN PRINT #12, "lprint_makefit(tqbs);" ELSE PRINT #12, "makefit(tqbs);"
-                    PRINT #12, "qbs_" + lp$ + "print(tqbs,0);"
+                    PrintToBuffer 12, "qbs_set(tqbs," + e$ + ");", 0
+                    PrintToBuffer 12, "if (new_error) goto skip" + u$ + ";", 0
+                    IF lp THEN PrintToBuffer 12, "lprint_makefit(tqbs);", 0 ELSE PrintToBuffer 12, "makefit(tqbs);", 0
+                    PrintToBuffer 12, "qbs_" + lp$ + "print(tqbs,0);", 0
                 ELSE
                     IF a2$ = "," THEN l$ = l$ + sp + a2$
                     IF a2$ = ";" THEN
                         IF RIGHT$(l$, 1) <> ";" THEN l$ = l$ + sp + a2$ 'concat ;; to ;
                     END IF
                 END IF 'len(e$)
-                IF a2$ = "," THEN PRINT #12, "tab();"
+                IF a2$ = "," THEN PrintToBuffer 12, "tab();", 0
                 e$ = ""
 
                 IF gotopu THEN i = i + 1: GOTO pujump
 
                 IF last THEN
-                    PRINT #12, "qbs_" + lp$ + "print(nothingstring,1);" 'go to new line
+                    PrintToBuffer 12, "qbs_" + lp$ + "print(nothingstring,1);", 0 'go to new line
                     EXIT FOR
                 END IF
 
@@ -22610,11 +22610,11 @@ SUB xprint (a$, ca$, n)
         printnext:
     NEXT
     IF LEN(e$) THEN a2$ = "": last = 1: GOTO printlast
-    IF n = 1 THEN PRINT #12, "qbs_" + lp$ + "print(nothingstring,1);"
-    PRINT #12, "skip" + u$ + ":"
-    PRINT #12, "qbs_free(tqbs);"
-    PRINT #12, cleanupstringprocessingcall$ + "0);"
-    IF lp THEN PRINT #12, "tab_LPRINT=0;"
+    IF n = 1 THEN PrintToBuffer 12, "qbs_" + lp$ + "print(nothingstring,1);", 0
+    PrintToBuffer 12, "skip" + u$ + ":", 0
+    PrintToBuffer 12, "qbs_free(tqbs);", 0
+    PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
+    IF lp THEN PrintToBuffer 12, "tab_LPRINT=0;", 0
     tlayout$ = l$
 END SUB
 
@@ -22647,7 +22647,7 @@ SUB xread (ca$, n)
             IF (t AND ISSTRING) THEN
                 e$ = refer(e$, t, 0)
                 IF Error_Happened THEN EXIT SUB
-                PRINT #12, "sub_read_string(data,&data_offset,data_size," + e$ + ");"
+                PrintToBuffer 12, "sub_read_string(data,&data_offset,data_size," + e$ + ");", 0
                 stringprocessinghappened = 1
             ELSE
                 'numeric variable
@@ -22674,7 +22674,7 @@ SUB xread (ca$, n)
         END IF
         IF a3$ = "" THEN a3$ = a2$ ELSE a3$ = a3$ + sp + a2$
     NEXT
-    IF stringprocessinghappened THEN PRINT #12, cleanupstringprocessingcall$ + "0);"
+    IF stringprocessinghappened THEN PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
 END SUB
 
@@ -22682,7 +22682,7 @@ SUB xwrite (ca$, n)
     l$ = "WRITE"
     u$ = str2$(uniquenumber)
     IF n = 1 THEN
-        PRINT #12, "qbs_print(nothingstring,1);"
+        PrintToBuffer 12, "qbs_print(nothingstring,1);", 0
         GOTO writeblankline2
     END IF
     b = 0
@@ -22723,8 +22723,8 @@ SUB xwrite (ca$, n)
                 IF (typ AND ISREFERENCE) THEN e$ = refer(e$, typ, 0)
                 IF Error_Happened THEN EXIT SUB
                 'format: string, (1/0) extraspace, (1/0) tab, (1/0)begin a new line
-                PRINT #12, "qbs_print(" + e$ + ","; newline; ");"
-                PRINT #12, "if (new_error) goto skip" + u$ + ";"
+                PrintToBuffer 12, "qbs_print(" + e$ + "," + STR$(newline) + ");", 0
+                PrintToBuffer 12, "if (new_error) goto skip" + u$ + ";", 0
                 e$ = ""
                 IF last THEN EXIT FOR
                 GOTO writenext
@@ -22735,8 +22735,8 @@ SUB xwrite (ca$, n)
     NEXT
     IF e$ <> "" THEN a2$ = ",": last = 1: GOTO writelast
     writeblankline2:
-    PRINT #12, "skip" + u$ + ":"
-    PRINT #12, cleanupstringprocessingcall$ + "0);"
+    PrintToBuffer 12, "skip" + u$ + ":", 0
+    PrintToBuffer 12, cleanupstringprocessingcall$ + "0);", 0
     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
 END SUB
 
@@ -24665,12 +24665,12 @@ FUNCTION NewByteElement$
     a$ = "byte_element_" + str2$(uniquenumber)
     NewByteElement$ = a$
     IF use_global_byte_elements THEN
-        PRINT #18, "byte_element_struct *" + a$ + "=(byte_element_struct*)malloc(12);"
+        PrintToBuffer 18, "byte_element_struct *" + a$ + "=(byte_element_struct*)malloc(12);", 0
     ELSE
-        PRINT #13, "byte_element_struct *" + a$ + "=NULL;"
-        PRINT #13, "if (!" + a$ + "){"
-        PRINT #13, "if ((mem_static_pointer+=12)<mem_static_limit) " + a$ + "=(byte_element_struct*)(mem_static_pointer-12); else " + a$ + "=(byte_element_struct*)mem_static_malloc(12);"
-        PRINT #13, "}"
+        PrintToBuffer 13, "byte_element_struct *" + a$ + "=NULL;", 0
+        PrintToBuffer 13, "if (!" + a$ + "){", 0
+        PrintToBuffer 13, "if ((mem_static_pointer+=12)<mem_static_limit) " + a$ + "=(byte_element_struct*)(mem_static_pointer-12); else " + a$ + "=(byte_element_struct*)mem_static_malloc(12);", 0
+        PrintToBuffer 13, "}", 0
     END IF
 END FUNCTION
 
@@ -25097,18 +25097,18 @@ END SUB
 
 SUB copy_full_udt (dst$, src$, file, base_offset, udt)
     IF NOT udtxvariable(udt) THEN
-        PRINT #file, "memcpy(" + dst$ + "+" + STR$(base_offset) + "," + src$ + "+" + STR$(base_offset) + "," + STR$(udtxsize(udt) \ 8) + ");"
+        PrintToBuffer file, "memcpy(" + dst$ + "+" + STR$(base_offset) + "," + src$ + "+" + STR$(base_offset) + "," + STR$(udtxsize(udt) \ 8) + ");", 0
         EXIT SUB
     END IF
     offset = base_offset
     element = udtxnext(udt)
     DO WHILE element
         IF ((udtetype(element) AND ISSTRING) > 0) AND (udtetype(element) AND ISFIXEDLENGTH) = 0 THEN
-            PRINT #file, "qbs_set(*(qbs**)(" + dst$ + "+" + STR$(offset) + "), *(qbs**)(" + src$ + "+" + STR$(offset) + "));"
+            PrintToBuffer file, "qbs_set(*(qbs**)(" + dst$ + "+" + STR$(offset) + "), *(qbs**)(" + src$ + "+" + STR$(offset) + "));", 0
         ELSEIF ((udtetype(element) AND ISUDT) > 0) THEN
             copy_full_udt dst$, src$, 12, offset, udtetype(element) AND 511
         ELSE
-            PRINT #file, "memcpy((" + dst$ + "+" + STR$(offset) + "),(" + src$ + "+" + STR$(offset) + ")," + STR$(udtesize(element) \ 8) + ");"
+            PrintToBuffer file, "memcpy((" + dst$ + "+" + STR$(offset) + "),(" + src$ + "+" + STR$(offset) + ")," + STR$(udtesize(element) \ 8) + ");", 0
         END IF
         offset = offset + udtesize(element) \ 8
         element = udtenext(element)
@@ -25227,27 +25227,28 @@ SUB addWarning (whichLineNumber AS LONG, includeLevel AS LONG, incLineNumber AS 
 END SUB
 
 SUB OpenBuffer (filename$, mode$, handle)
-    'IF diskBuffer(handle).state = -1 THEN ERROR 5: EXIT SUB
+    IF diskBuffer(handle).state = -1 THEN ERROR 55: EXIT SUB
+
+    'locate existing named buffer
+    FOR i = 1 TO UBOUND(diskBuffer)
+        IF diskBuffer(i).filename = filename$ THEN
+            IF diskBuffer(i).state THEN ERROR 55: EXIT SUB
+            'found existing buffer - reuse it.
+            tempBuffer$ = diskBuffer(i).buffer
+            diskBuffer(i).filename = ""
+            diskBuffer(i).buffer = ""
+            EXIT FOR
+        END IF
+    NEXT
+
+    'commit any pre-existing data if this handle is being reused
+    CommitBufferToDisk handle
+
     SELECT CASE UCASE$(mode$)
         CASE "OUTPUT"
-            FOR i = 1 TO UBOUND(diskBuffer)
-                IF diskBuffer(i).filename = filename$ THEN
-                    IF i <> handle THEN
-                        IF diskBuffer(i).state = -1 THEN ERROR 5: EXIT SUB
-                        diskBuffer(i).buffer = ""
-                        diskBuffer(i).filename = ""
-                    END IF
-                    EXIT FOR
-                END IF
-            NEXT
             diskBuffer(handle).buffer = ""
         CASE "APPEND"
-            FOR i = 1 TO UBOUND(diskBuffer)
-                IF diskBuffer(i).filename = filename$ THEN
-                    IF i <> handle THEN diskBuffer(handle).buffer = diskBuffer(i).buffer
-                    EXIT FOR
-                END IF
-            NEXT
+            diskBuffer(handle).buffer = tempBuffer$
     END SELECT
     diskBuffer(handle).filename = filename$
     diskBuffer(handle).state = -1 'open
@@ -25257,9 +25258,10 @@ SUB CloseBuffer (handle)
     diskBuffer(handle).state = 0
 END SUB
 
-SUB PrintToBuffer (handle, text$, retainPosition AS _BYTE)
+SUB PrintToBuffer (handle, text$, retainCursor AS _BYTE)
     'IF diskBuffer(handle).state = 0 THEN ERROR 5: EXIT SUB
-    diskBuffer(handle).buffer = diskBuffer(handle).buffer + text$ + CHR$(10)
+    IF NOT retainCursor THEN lf$ = CHR$(10)
+    diskBuffer(handle).buffer = diskBuffer(handle).buffer + text$ + lf$
 END SUB
 
 FUNCTION FreeBuffer%
@@ -25269,11 +25271,13 @@ FUNCTION FreeBuffer%
 END FUNCTION
 
 SUB CommitBufferToDisk (handle)
-    IF diskBuffer(handle).state THEN
+    IF LEN(diskBuffer(handle).filename) THEN
+        CloseBuffer handle
         IF _FILEEXISTS(diskBuffer(handle).filename) THEN KILL diskBuffer(handle).filename
         fh = FREEFILE
         OPEN diskBuffer(handle).filename FOR BINARY AS #fh
-        PUT #fh, , diskBuffer(handle).buffer
+        tempbuffer$ = diskBuffer(handle).buffer
+        PUT #fh, , tempbuffer$
         CLOSE #fh
     END IF
 END SUB
