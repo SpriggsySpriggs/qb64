@@ -15,7 +15,7 @@ DIM SHARED IDEShowErrorsImmediately AS _BYTE
 DIM SHARED ShowLineNumbersSeparator AS _BYTE, ShowLineNumbersUseBG AS _BYTE
 DIM SHARED IgnoreWarnings AS _BYTE, qb64versionprinted AS _BYTE
 DIM SHARED DisableSyntaxHighlighter AS _BYTE, ExeToSourceFolderFirstTimeMsg AS _BYTE
-DIM SHARED WhiteListQB64FirstTimeMsg AS _BYTE
+DIM SHARED WhiteListQB64FirstTimeMsg AS _BYTE, ideautolayoutkwcapitals AS _BYTE
 
 IF LoadedIDESettings = 0 THEN
     'We only want to load the file once when QB64 first starts
@@ -29,27 +29,19 @@ IF LoadedIDESettings = 0 THEN
 
     GOSUB CheckConfigFileExists 'make certain the config file exists and if not, create one
 
-    IF INSTR(_OS$, "WIN") THEN
-
-        result = ReadConfigSetting("AllowIndependentSettings", value$)
-        IF result THEN
-            IF value$ = "TRUE" OR ABS(VAL(value$)) = 1 THEN 'We default to false and only use one set of IDE settings, no matter how many windows we open up
-                IDE_Index$ = "(" + LTRIM$(RTRIM$(STR$(tempfolderindex))) + ")"
-                ConfigFile$ = "internal/config" + IDE_Index$ + ".txt"
-                ConfigBak$ = "internal/config" + IDE_Index$ + ".bak"
-                GOSUB CheckConfigFileExists
-            ELSE
-                WriteConfigSetting "'[GENERAL SETTINGS]", "AllowIndependentSettings", "FALSE"
-                IDE_Index$ = ""
-            END IF
+    result = ReadConfigSetting("AllowIndependentSettings", value$)
+    IF result THEN
+        IF value$ = "TRUE" OR ABS(VAL(value$)) = 1 THEN 'We default to false and only use one set of IDE settings, no matter how many windows we open up
+            IDE_Index$ = "(" + LTRIM$(RTRIM$(STR$(tempfolderindex))) + ")"
+            ConfigFile$ = "internal/config" + IDE_Index$ + ".txt"
+            ConfigBak$ = "internal/config" + IDE_Index$ + ".bak"
+            GOSUB CheckConfigFileExists
         ELSE
             WriteConfigSetting "'[GENERAL SETTINGS]", "AllowIndependentSettings", "FALSE"
             IDE_Index$ = ""
         END IF
-
     ELSE
-        'Linux doesn't offer multiple temp folders and thus can not work properly with independent settings
-        'This option is not included on Linux, and if manually inserted will simply be ignored.
+        WriteConfigSetting "'[GENERAL SETTINGS]", "AllowIndependentSettings", "FALSE"
         IDE_Index$ = ""
     END IF
 
@@ -241,6 +233,19 @@ IF LoadedIDESettings = 0 THEN
     ELSE
         WriteConfigSetting "'[IDE DISPLAY SETTINGS]", "IDE_SortSUBs", "FALSE"
         idesortsubs = 0
+    END IF
+
+    result = ReadConfigSetting("IDE_KeywordCapital", value$)
+    IF result THEN
+        IF value$ = "TRUE" OR VAL(value$) = -1 THEN
+            ideautolayoutkwcapitals = -1
+        ELSE
+            ideautolayoutkwcapitals = 0
+            WriteConfigSetting "'[IDE DISPLAY SETTINGS]", "IDE_KeywordCapital", "FALSE"
+        END IF
+    ELSE
+        WriteConfigSetting "'[IDE DISPLAY SETTINGS]", "IDE_KeywordCapital", "FALSE"
+        ideautolayoutkwcapitals = 0
     END IF
 
     result = ReadConfigSetting("IDE_SUBsLength", value$)

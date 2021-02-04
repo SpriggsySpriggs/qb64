@@ -1,9 +1,9 @@
-if(oldstr3537){
-if(oldstr3537->fixed)qbs_set(oldstr3537,_FUNC_READCONFIGSETTING_STRING_ITEM);
+if(oldstr3562){
+if(oldstr3562->fixed)qbs_set(oldstr3562,_FUNC_READCONFIGSETTING_STRING_ITEM);
 qbs_free(_FUNC_READCONFIGSETTING_STRING_ITEM);
 }
-if(oldstr3538){
-if(oldstr3538->fixed)qbs_set(oldstr3538,_FUNC_READCONFIGSETTING_STRING_VALUE);
+if(oldstr3563){
+if(oldstr3563->fixed)qbs_set(oldstr3563,_FUNC_READCONFIGSETTING_STRING_VALUE);
 qbs_free(_FUNC_READCONFIGSETTING_STRING_VALUE);
 }
 qbs_free(_FUNC_READCONFIGSETTING_STRING_TEMP);

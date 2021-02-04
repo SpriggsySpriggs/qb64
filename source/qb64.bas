@@ -36,10 +36,12 @@ UserDefine(0, 0) = "WINDOWS": UserDefine(0, 1) = "WIN"
 UserDefine(0, 2) = "LINUX"
 UserDefine(0, 3) = "MAC": UserDefine(0, 4) = "MACOSX"
 UserDefine(0, 5) = "32BIT": UserDefine(0, 6) = "64BIT"
+UserDefine(0, 7) = "VERSION"
 IF INSTR(_OS$, "WIN") THEN UserDefine(1, 0) = "-1": UserDefine(1, 1) = "-1" ELSE UserDefine(1, 0) = "0": UserDefine(1, 1) = "0"
 IF INSTR(_OS$, "LINUX") THEN UserDefine(1, 2) = "-1" ELSE UserDefine(1, 2) = "0"
 IF INSTR(_OS$, "MAC") THEN UserDefine(1, 3) = "-1": UserDefine(1, 4) = "-1" ELSE UserDefine(1, 3) = "0": UserDefine(1, 4) = "0"
 IF INSTR(_OS$, "32BIT") THEN UserDefine(1, 5) = "-1": UserDefine(1, 6) = "0" ELSE UserDefine(1, 5) = "0": UserDefine(1, 6) = "-1"
+UserDefine(1, 7) = Version$
 
 DIM SHARED QB64_uptime!
 
@@ -1056,16 +1058,6 @@ IF C = 9 THEN 'run
         GOTO sendcommand
     END IF
 
-    'hack! (a new message should be sent to the IDE stating C++ compilation was successful)
-    COLOR 7, 1: LOCATE idewy - 3, 2: PRINT SPACE$(idewx - 2);: LOCATE idewy - 2, 2: PRINT SPACE$(idewx - 2);: LOCATE idewy - 1, 2: PRINT SPACE$(idewx - 2); 'clear status window
-    IF idemode THEN
-        'Darken fg/bg colors
-        dummy = DarkenFGBG(1)
-        COLOR 15
-    END IF
-    LOCATE idewy - 3, 2: PRINT "Starting program...";
-    PCOPY 3, 0
-
     'execute program
 
     IF iderunmode = 1 THEN
@@ -1109,7 +1101,7 @@ ideerror:
 IF INSTR(idemessage$, sp$) THEN
     'Something went wrong here, so let's give a generic error message to the user.
     '(No error message should contain sp$ - that is, CHR$(13), when not in Debug mode)
-    idemessage$ = "Compiler error (check for syntax errors) (Reference:"
+    idemessage$ = "Compiler error (check for syntax errors) (" + _ERRORMESSAGE$ + ":"
     IF ERR THEN idemessage$ = idemessage$ + str2$(ERR) + "-"
     IF _ERRORLINE THEN idemessage$ = idemessage$ + str2$(_ERRORLINE)
     IF _INCLERRORLINE THEN idemessage$ = idemessage$ + "-" + _INCLERRORFILE$ + "-" + str2$(_INCLERRORLINE)
@@ -1426,7 +1418,7 @@ subfuncn = 0
 subfunc = ""
 SelectCaseCounter = 0
 ExecCounter = 0
-UserDefineCount = 6
+UserDefineCount = 7
 totalVariablesCreated = 0
 totalWarnings = 0
 duplicateConstWarning = 0
@@ -1717,6 +1709,12 @@ DO
             GOTO finishedlinepp 'we don't check for anything inside lines that we've marked for skipping
         END IF
 
+        IF LEFT$(temp$, 7) = "$ERROR " THEN
+            temp$ = LTRIM$(MID$(temp$, 7))
+            a$ = "Compilation check failed: " + temp$
+            GOTO errmes
+        END IF
+
         IF LEFT$(temp$, 5) = "$LET " THEN
             temp$ = LTRIM$(MID$(temp$, 5)) 'simply shorten our string to parse
             'For starters, let's make certain that we have 3 elements to deal with
@@ -1757,9 +1755,9 @@ DO
                 END SELECT
             NEXT
             r$ = r1$
-            layout$ = "$LET " + l$ + " = " + r$
+            layout$ = SCase$("$Let ") + l$ + " = " + r$
             'First look to see if we have an existing setting like this and if so, update it
-            FOR i = 7 TO UserDefineCount 'UserDefineCount 1-6 are reserved for automatic OS/BIT detection
+            FOR i = 8 TO UserDefineCount 'UserDefineCount 1-7 are reserved for automatic OS/BIT detection & version
                 IF UserDefine(0, i) = l$ THEN UserDefine(1, i) = r$: GOTO finishedlinepp
             NEXT
             'Otherwise create a new setting and set the initial value for it
@@ -1858,89 +1856,142 @@ DO
                                 END IF
                             END IF
 
-                            lasttypeelement = lasttypeelement + 1
-                            i2 = lasttypeelement
-                            udtenext(i2) = 0
-
-                            IF n < 3 THEN a$ = "Expected variablename AS type or END TYPE": GOTO errmes
+                            IF n < 3 THEN a$ = "Expected element-name AS type, AS type element-list, or END TYPE": GOTO errmes
                             n$ = firstelement$
 
-                            ii = 2
+                            IF n$ <> "AS" THEN
+                                'traditional variable-name AS type syntax, single-element
+                                lasttypeelement = lasttypeelement + 1
+                                i2 = lasttypeelement
+                                udtenext(i2) = 0
 
-                            udtearrayelements(i2) = 0
+                                ii = 2
 
-                            IF ii >= n OR getelement$(a$, ii) <> "AS" THEN a$ = "Expected variablename AS type or END TYPE": GOTO errmes
-                            t$ = getelements$(a$, ii + 1, n)
+                                udtearrayelements(i2) = 0
 
-                            typ = typname2typ(t$)
-                            IF Error_Happened THEN GOTO errmes
-                            IF typ = 0 THEN a$ = "Undefined type": GOTO errmes
-                            typsize = typname2typsize
+                                IF ii >= n OR getelement$(a$, ii) <> "AS" THEN a$ = "Expected element-name AS type, AS type element-list, or END TYPE": GOTO errmes
+                                t$ = getelements$(a$, ii + 1, n)
 
-                            IF validname(n$) = 0 THEN a$ = "Invalid name": GOTO errmes
-                            udtename(i2) = n$
+                                typ = typname2typ(t$)
+                                IF Error_Happened THEN GOTO errmes
+                                IF typ = 0 THEN a$ = "Undefined type": GOTO errmes
+                                typsize = typname2typsize
 
-                            udtecname(i2) = getelement$(ca$, 1)
-                            udtetype(i2) = typ
-                            udtetypesize(i2) = typsize
+                                IF validname(n$) = 0 THEN a$ = "Invalid name": GOTO errmes
+                                udtename(i2) = n$
 
-                            hashname$ = n$
+                                udtecname(i2) = getelement$(ca$, 1)
+                                NormalTypeBlock:
+                                udtetype(i2) = typ
+                                udtetypesize(i2) = typsize
 
-                            'check for name conflicts (any similar reserved or element from current UDT)
-                            hashchkflags = HASHFLAG_RESERVED + HASHFLAG_UDTELEMENT
-                            hashres = HashFind(hashname$, hashchkflags, hashresflags, hashresref)
-                            DO WHILE hashres
-                                IF hashresflags AND HASHFLAG_UDTELEMENT THEN
-                                    IF hashresref = i THEN a$ = "Name already in use": GOTO errmes
-                                END IF
-                                IF hashresflags AND HASHFLAG_RESERVED THEN
-                                    IF hashresflags AND (HASHFLAG_TYPE + HASHFLAG_CUSTOMSYNTAX + HASHFLAG_OPERATOR + HASHFLAG_XELEMENTNAME) THEN a$ = "Name already in use": GOTO errmes
-                                END IF
-                                IF hashres <> 1 THEN hashres = HashFindCont(hashresflags, hashresref) ELSE hashres = 0
-                            LOOP
-                            'add to hash table
-                            HashAdd hashname$, HASHFLAG_UDTELEMENT, i
+                                hashname$ = n$
 
-                            'Calculate element's size
-                            IF typ AND ISUDT THEN
-                                u = typ AND 511
-                                udtesize(i2) = udtxsize(u)
-                                IF udtxbytealign(u) THEN udtxbytealign(i) = 1: udtebytealign(i2) = 1
-                                IF udtxvariable(u) THEN udtxvariable(i) = -1
-                            ELSE
-                                IF (typ AND ISSTRING) THEN
-                                    IF (typ AND ISFIXEDLENGTH) = 0 THEN
-                                        udtesize(i2) = OFFSETTYPE AND 511
-                                        udtxvariable(i) = -1
-                                    ELSE
-                                        udtesize(i2) = typsize * 8
+                                'check for name conflicts (any similar reserved or element from current UDT)
+                                hashchkflags = HASHFLAG_RESERVED + HASHFLAG_UDTELEMENT
+                                hashres = HashFind(hashname$, hashchkflags, hashresflags, hashresref)
+                                DO WHILE hashres
+                                    IF hashresflags AND HASHFLAG_UDTELEMENT THEN
+                                        IF hashresref = i THEN a$ = "Name already in use": GOTO errmes
                                     END IF
-                                    udtxbytealign(i) = 1: udtebytealign(i2) = 1
+                                    IF hashresflags AND HASHFLAG_RESERVED THEN
+                                        IF hashresflags AND (HASHFLAG_TYPE + HASHFLAG_CUSTOMSYNTAX + HASHFLAG_OPERATOR + HASHFLAG_XELEMENTNAME) THEN a$ = "Name already in use": GOTO errmes
+                                    END IF
+                                    IF hashres <> 1 THEN hashres = HashFindCont(hashresflags, hashresref) ELSE hashres = 0
+                                LOOP
+                                'add to hash table
+                                HashAdd hashname$, HASHFLAG_UDTELEMENT, i
+
+                                'Calculate element's size
+                                IF typ AND ISUDT THEN
+                                    u = typ AND 511
+                                    udtesize(i2) = udtxsize(u)
+                                    IF udtxbytealign(u) THEN udtxbytealign(i) = 1: udtebytealign(i2) = 1
+                                    IF udtxvariable(u) THEN udtxvariable(i) = -1
                                 ELSE
-                                    udtesize(i2) = typ AND 511
-                                    IF (typ AND ISOFFSETINBITS) = 0 THEN udtxbytealign(i) = 1: udtebytealign(i2) = 1
+                                    IF (typ AND ISSTRING) THEN
+                                        IF (typ AND ISFIXEDLENGTH) = 0 THEN
+                                            udtesize(i2) = OFFSETTYPE AND 511
+                                            udtxvariable(i) = -1
+                                        ELSE
+                                            udtesize(i2) = typsize * 8
+                                        END IF
+                                        udtxbytealign(i) = 1: udtebytealign(i2) = 1
+                                    ELSE
+                                        udtesize(i2) = typ AND 511
+                                        IF (typ AND ISOFFSETINBITS) = 0 THEN udtxbytealign(i) = 1: udtebytealign(i2) = 1
+                                    END IF
                                 END IF
-                            END IF
 
-                            'Increase block size
-                            IF udtebytealign(i2) THEN
-                                IF udtxsize(i) MOD 8 THEN
-                                    udtxsize(i) = udtxsize(i) + (8 - (udtxsize(i) MOD 8))
+                                'Increase block size
+                                IF udtebytealign(i2) THEN
+                                    IF udtxsize(i) MOD 8 THEN
+                                        udtxsize(i) = udtxsize(i) + (8 - (udtxsize(i) MOD 8))
+                                    END IF
                                 END IF
-                            END IF
-                            udtxsize(i) = udtxsize(i) + udtesize(i2)
+                                udtxsize(i) = udtxsize(i) + udtesize(i2)
 
-                            'Link element to previous element
-                            IF udtxnext(i) = 0 THEN
-                                udtxnext(i) = i2
+                                'Link element to previous element
+                                IF udtxnext(i) = 0 THEN
+                                    udtxnext(i) = i2
+                                ELSE
+                                    udtenext(i2 - 1) = i2
+                                END IF
+
+                                'print "+"+rtrim$(udtename(i2));udtetype(i2);udtesize(i2);udtebytealign(i2);udtxsize(i)
+                                IF newAsTypeBlockSyntax THEN RETURN
+                                GOTO finishedlinepp
                             ELSE
-                                udtenext(i2 - 1) = i2
+                                'new AS type variable-list syntax, multiple elements
+                                ii = 2
+
+                                IF ii >= n THEN a$ = "Expected element-name AS type, AS type element-list, or END TYPE": GOTO errmes
+                                previousElement$ = ""
+                                t$ = ""
+                                lastElement$ = ""
+                                buildTypeName:
+                                lastElement$ = getelement$(a$, ii)
+                                IF lastElement$ <> "," AND lastElement$ <> "" THEN
+                                    n$ = lastElement$
+                                    cn$ = getelement$(ca$, ii)
+                                    IF LEN(previousElement$) THEN t$ = t$ + previousElement$ + " "
+                                    previousElement$ = n$
+                                    lastElement$ = ""
+                                    ii = ii + 1
+                                    GOTO buildTypeName
+                                END IF
+
+                                t$ = RTRIM$(t$)
+                                typ = typname2typ(t$)
+                                IF Error_Happened THEN GOTO errmes
+                                IF typ = 0 THEN a$ = "Undefined type": GOTO errmes
+                                typsize = typname2typsize
+
+                                nexttypeelement:
+                                lasttypeelement = lasttypeelement + 1
+                                i2 = lasttypeelement
+                                udtenext(i2) = 0
+                                udtearrayelements(i2) = 0
+
+                                udtename(i2) = n$
+                                udtecname(i2) = cn$
+
+                                IF validname(n$) = 0 THEN a$ = "Invalid name": GOTO errmes
+
+                                newAsTypeBlockSyntax = -1
+                                GOSUB NormalTypeBlock
+                                newAsTypeBlockSyntax = 0
+
+                                getNextElement:
+                                ii = ii + 1
+                                lastElement$ = getelement$(a$, ii)
+                                IF lastElement$ = "" THEN GOTO finishedlinepp
+                                IF ii = n AND lastElement$ = "," THEN a$ = "Expected element-name": GOTO errmes
+                                IF lastElement$ = "," THEN GOTO getNextElement
+                                n$ = lastElement$
+                                cn$ = getelement$(ca$, ii)
+                                GOTO nexttypeelement
                             END IF
-
-                            'print "+"+rtrim$(udtename(i2));udtetype(i2);udtesize(i2);udtebytealign(i2);udtxsize(i)
-
-                            GOTO finishedlinepp
-
                         END IF 'definingtype
 
                         IF definingtype AND n >= 1 THEN a$ = "Expected END TYPE": GOTO errmes
@@ -2631,7 +2682,7 @@ subfuncn = 0
 lastLineReturn = 0
 lastLine = 0
 firstLine = 1
-UserDefineCount = 6
+UserDefineCount = 7
 
 FOR i = 0 TO constlast: constdefined(i) = 0: NEXT 'undefine constants
 
@@ -2814,7 +2865,7 @@ DO
             IF DefineElse(ExecCounter) = 0 THEN a$ = "$END IF without $IF": GOTO errmes
             DefineElse(ExecCounter) = 0 'We no longer have an $IF block at this level
             ExecCounter = ExecCounter - 1
-            layout$ = "$END IF"
+            layout$ = SCase$("$End If")
             controltype(controllevel) = 0
             controllevel = controllevel - 1
             GOTO finishednonexec
@@ -2842,9 +2893,9 @@ DO
 
             controllevel = controllevel + 1
             controltype(controllevel) = 6
-            IF temp = 0 THEN layout$ = "$IF " + temp$ + " THEN": GOTO finishednonexec 'no = sign in the $IF statement, so we're going to assume the user is doing something like $IF flag
+            IF temp = 0 THEN layout$ = SCase$("$If ") + temp$ + SCase$(" Then"): GOTO finishednonexec 'no = sign in the $IF statement, so we're going to assume the user is doing something like $IF flag
             l$ = RTRIM$(LEFT$(temp$, temp - 1)): r$ = LTRIM$(MID$(temp$, temp + 1))
-            layout$ = "$IF " + l$ + " = " + r$ + " THEN"
+            layout$ = SCase$("$If ") + l$ + " = " + r$ + SCase$(" Then")
             GOTO finishednonexec
         END IF
 
@@ -2857,7 +2908,7 @@ DO
             ELSE
                 ExecLevel(ExecCounter) = ExecLevel(ExecCounter - 1) 'If we were processing code before, code after this segment is going to be SKIPPED
             END IF
-            layout$ = "$ELSE"
+            layout$ = SCase$("$Else")
             lhscontrollevel = lhscontrollevel - 1
             GOTO finishednonexec
         END IF
@@ -2884,9 +2935,9 @@ DO
 
                 lhscontrollevel = lhscontrollevel - 1
                 temp = INSTR(temp$, "=")
-                IF temp = 0 THEN layout$ = "$ELSEIF " + temp$ + " THEN": GOTO finishednonexec 'no = sign in the $IF statement, so we're going to assume the user is doing something like $IF flag
+                IF temp = 0 THEN layout$ = SCase$("$ElseIf ") + temp$ + SCase$(" Then"): GOTO finishednonexec 'no = sign in the $IF statement, so we're going to assume the user is doing something like $IF flag
                 l$ = RTRIM$(LEFT$(temp$, temp - 1)): r$ = LTRIM$(MID$(temp$, temp + 1))
-                layout$ = "$ELSEIF " + l$ + " = " + r$ + " THEN"
+                layout$ = SCase$("$ElseIf ") + l$ + " = " + r$ + SCase$(" Then")
                 GOTO finishednonexec
             END IF
         END IF
@@ -2902,9 +2953,9 @@ DO
             'For starters, let's make certain that we have 3 elements to deal with
             temp = INSTR(temp$, "=") 'without an = in there, we can't get a value from the left and right side
             l$ = RTRIM$(LEFT$(temp$, temp - 1)): r$ = LTRIM$(MID$(temp$, temp + 1))
-            layout$ = "$LET " + l$ + " = " + r$
+            layout$ = SCase$("$Let ") + l$ + " = " + r$
             'First look to see if we have an existing setting like this and if so, update it
-            FOR i = 7 TO UserDefineCount 'UserDefineCount 1-6 are reserved for automatic OS/BIT detection
+            FOR i = 7 TO UserDefineCount 'UserDefineCount 1-7 are reserved for automatic OS/BIT detection & version
                 IF UserDefine(0, i) = l$ THEN UserDefine(1, i) = r$: GOTO finishednonexec
             NEXT
             'Otherwise create a new setting and set the initial value for it
@@ -2918,14 +2969,14 @@ DO
         END IF
 
         IF a3u$ = "$COLOR:0" THEN
-            layout$ = "$COLOR:0"
+            layout$ = SCase$("$Color:0")
             addmetainclude$ = getfilepath$(COMMAND$(0)) + "source" + pathsep$ + "utilities" + pathsep$ + "color0.bi"
             layoutdone = 1
             GOTO finishednonexec
         END IF
 
         IF a3u$ = "$COLOR:32" THEN
-            layout$ = "$COLOR:32"
+            layout$ = SCase$("$Color:32")
             addmetainclude$ = getfilepath$(COMMAND$(0)) + "source" + pathsep$ + "utilities" + pathsep$ + "color32.bi"
             layoutdone = 1
             GOTO finishednonexec
@@ -2933,89 +2984,95 @@ DO
 
         IF a3u$ = "$NOPREFIX" THEN
             'already set in prepass
-            layout$ = "$NOPREFIX"
+            layout$ = SCase$("$NoPrefix")
             GOTO finishednonexec
         END IF
 
         IF a3u$ = "$VIRTUALKEYBOARD:ON" THEN
             'Deprecated; does nothing.
-            layout$ = "$VIRTUALKEYBOARD:ON"
+            layout$ = SCase$("$VirtualKeyboard:On")
             GOTO finishednonexec
         END IF
 
         IF a3u$ = "$VIRTUALKEYBOARD:OFF" THEN
             'Deprecated; does nothing.
-            layout$ = "$VIRTUALKEYBOARD:OFF"
+            layout$ = SCase$("$VirtualKeyboard:Off")
             GOTO finishednonexec
         END IF
 
         IF a3u$ = "$CHECKING:OFF" THEN
-            layout$ = "$CHECKING:OFF"
+            layout$ = SCase$("$Checking:Off")
             NoChecks = 1
             GOTO finishednonexec
         END IF
 
         IF a3u$ = "$CHECKING:ON" THEN
-            layout$ = "$CHECKING:ON"
+            layout$ = SCase$("$Checking:On")
             NoChecks = 0
             GOTO finishednonexec
         END IF
 
         IF a3u$ = "$CONSOLE" THEN
-            layout$ = "$CONSOLE"
+            layout$ = SCase$("$Console")
             Console = 1
             GOTO finishednonexec
         END IF
 
         IF a3u$ = "$CONSOLE:ONLY" THEN
-            layout$ = "$CONSOLE:ONLY"
+            layout$ = SCase$("$Console:Only")
             DEPENDENCY(DEPENDENCY_CONSOLE_ONLY) = DEPENDENCY(DEPENDENCY_CONSOLE_ONLY) OR 1
             Console = 1
-            GOTO finishednonexec
+            IF prepass = 0 THEN
+                IF NoChecks = 0 THEN PRINT #12, "do{"
+                PRINT #12, "sub__dest(func__console());"
+                GOTO finishedline2
+            ELSE
+                GOTO finishednonexec
+            END IF
         END IF
 
         IF a3u$ = "$ASSERTS" THEN
-            layout$ = "$ASSERTS"
+            layout$ = SCase$("$Asserts")
             Asserts = 1
             GOTO finishednonexec
         END IF
 
         IF a3u$ = "$ASSERTS:CONSOLE" THEN
-            layout$ = "$ASSERTS:CONSOLE"
+            layout$ = SCase$("$Asserts:Console")
             Asserts = 1
             Console = 1
             GOTO finishednonexec
         END IF
 
         IF a3u$ = "$SCREENHIDE" THEN
-            layout$ = "$SCREENHIDE"
+            layout$ = SCase$("$ScreenHide")
             ScreenHide = 1
             GOTO finishednonexec
         END IF
         IF a3u$ = "$SCREENSHOW" THEN
-            layout$ = "$SCREENSHOW"
+            layout$ = SCase$("$ScreenShow")
             ScreenHide = 0
             GOTO finishednonexec
         END IF
 
         IF a3u$ = "$RESIZE:OFF" THEN
-            layout$ = "$RESIZE:OFF"
+            layout$ = SCase$("$Resize:Off")
             Resize = 0: Resize_Scale = 0
             GOTO finishednonexec
         END IF
         IF a3u$ = "$RESIZE:ON" THEN
-            layout$ = "$RESIZE:ON"
+            layout$ = SCase$("$Resize:On")
             Resize = 1: Resize_Scale = 0
             GOTO finishednonexec
         END IF
 
         IF a3u$ = "$RESIZE:STRETCH" THEN
-            layout$ = "$RESIZE:STRETCH"
+            layout$ = SCase$("$Resize:Stretch")
             Resize = 1: Resize_Scale = 1
             GOTO finishednonexec
         END IF
         IF a3u$ = "$RESIZE:SMOOTH" THEN
-            layout$ = "$RESIZE:SMOOTH"
+            layout$ = SCase$("$Resize:Smooth")
             Resize = 1: Resize_Scale = 2
             GOTO finishednonexec
         END IF
@@ -3035,44 +3092,44 @@ DO
                 CASE "FILEVERSION#"
                     GOSUB ValidateVersion
                     viFileVersionNum$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:FILEVERSION#=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:FILEVERSION#=") + VersionInfoValue$
                 CASE "PRODUCTVERSION#"
                     GOSUB ValidateVersion
                     viProductVersionNum$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:PRODUCTVERSION#=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:PRODUCTVERSION#=") + VersionInfoValue$
                 CASE "COMPANYNAME"
                     viCompanyName$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:CompanyName=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:") + "CompanyName=" + VersionInfoValue$
                 CASE "FILEDESCRIPTION"
                     viFileDescription$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:FileDescription=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:") + "FileDescription=" + VersionInfoValue$
                 CASE "FILEVERSION"
                     viFileVersion$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:FileVersion=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:") + "FileVersion=" + VersionInfoValue$
                 CASE "INTERNALNAME"
                     viInternalName$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:InternalName=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:") + "InternalName=" + VersionInfoValue$
                 CASE "LEGALCOPYRIGHT"
                     viLegalCopyright$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:LegalCopyright=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:") + "LegalCopyright=" + VersionInfoValue$
                 CASE "LEGALTRADEMARKS"
                     viLegalTrademarks$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:LegalTrademarks=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:") + "LegalTrademarks=" + VersionInfoValue$
                 CASE "ORIGINALFILENAME"
                     viOriginalFilename$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:OriginalFilename=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:") + "OriginalFilename=" + VersionInfoValue$
                 CASE "PRODUCTNAME"
                     viProductName$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:ProductName=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:") + "ProductName=" + VersionInfoValue$
                 CASE "PRODUCTVERSION"
                     viProductVersion$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:ProductVersion=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:") + "ProductVersion=" + VersionInfoValue$
                 CASE "COMMENTS"
                     viComments$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:Comments=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:") + "Comments=" + VersionInfoValue$
                 CASE "WEB"
                     viWeb$ = VersionInfoValue$
-                    layout$ = "$VERSIONINFO:Web=" + VersionInfoValue$
+                    layout$ = SCase$("$VersionInfo:") + "Web=" + VersionInfoValue$
                 CASE ELSE
                     a$ = "Invalid key. (Use FILEVERSION#, PRODUCTVERSION#, CompanyName, FileDescription, FileVersion, InternalName, LegalCopyright, LegalTrademarks, OriginalFilename, ProductName, ProductVersion, Comments or Web)"
                     GOTO errmes
@@ -3107,7 +3164,7 @@ DO
             END IF
             ExeIconFile$ = RTRIM$(LTRIM$(MID$(a3$, FirstDelimiter + 1, SecondDelimiter - FirstDelimiter - 1)))
             IF LEN(ExeIconFile$) = 0 THEN a$ = "Expected $EXEICON:'filename'": GOTO errmes
-            layout$ = "$EXEICON:'" + ExeIconFile$ + "'" + MID$(a3$, SecondDelimiter + 1)
+            layout$ = SCase$("$ExeIcon:'") + ExeIconFile$ + "'" + MID$(a3$, SecondDelimiter + 1)
 
             IF INSTR(_OS$, "WIN") THEN
                 'Actual metacommand processing. Windows only.
@@ -3213,7 +3270,7 @@ DO
                 s = Labels(r).Scope
                 IF s = subfuncn OR s = -1 THEN 'same scope?
                     IF s = -1 THEN Labels(r).Scope = subfuncn 'acquire scope
-                    IF Labels(r).State = 1 THEN a$ = "Duplicate label": GOTO errmes
+                    IF Labels(r).State = 1 THEN a$ = "Duplicate label (" + RTRIM$(Labels(r).cn) + ")": GOTO errmes
                     'aquire state 0 types
                     tlayout$ = RTRIM$(Labels(r).cn)
                     GOTO addlabaq100
@@ -3275,7 +3332,7 @@ DO
                     s = Labels(r).Scope
                     IF s = subfuncn OR s = -1 THEN 'same scope?
                         IF s = -1 THEN Labels(r).Scope = subfuncn 'acquire scope
-                        IF Labels(r).State = 1 THEN a$ = "Duplicate label": GOTO errmes
+                        IF Labels(r).State = 1 THEN a$ = "Duplicate label (" + RTRIM$(Labels(r).cn) + ")": GOTO errmes
                         'aquire state 0 types
                         tlayout$ = RTRIM$(Labels(r).cn)
                         GOTO addlabaq
@@ -3514,7 +3571,7 @@ DO
 
     IF n <= 2 THEN
         IF firstelement$ = "DATA" THEN
-            l$ = firstelement$
+            l$ = SCase$("Data")
             IF n = 2 THEN
 
                 e$ = SPACE$((LEN(secondelement$) - 1) \ 2)
@@ -3542,7 +3599,7 @@ DO
         IF firstelement$ = "END" THEN
             IF n <> 2 OR secondelement$ <> "DECLARE" THEN a$ = "Expected END DECLARE": GOTO errmes
             declaringlibrary = 0
-            l$ = "END" + sp + "DECLARE"
+            l$ = SCase$("End" + sp + "Declare")
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             GOTO finishednonexec
         END IF 'end declare
@@ -3562,34 +3619,83 @@ DO
         IF firstelement$ = "END" THEN
             IF n <> 2 OR secondelement$ <> "TYPE" THEN a$ = "Expected END TYPE": GOTO errmes
             definingtype = 0
-            l$ = "END" + sp + "TYPE"
+            l$ = SCase$("End" + sp + "Type")
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             GOTO finishednonexec
         END IF
 
-        IF n < 3 OR secondelement$ <> "AS" THEN a$ = "Expected element-name AS type-name": GOTO errmes
+        IF n < 3 THEN a$ = "Expected element-name AS type or AS type element-list": GOTO errmes
         definingtype = 2
-        l$ = getelement(ca$, 1) + sp + "AS"
-        t$ = getelements$(a$, 3, n)
-        typ = typname2typ(t$)
-        IF Error_Happened THEN GOTO errmes
-        IF typ = 0 THEN a$ = "Undefined type": GOTO errmes
-        IF typ AND ISUDT THEN
-            IF UCASE$(RTRIM$(t$)) = "MEM" AND RTRIM$(udtxcname(typ AND 511)) = "_MEM" AND qb64prefix_set = 1 THEN
-                t$ = MID$(RTRIM$(udtxcname(typ AND 511)), 2)
+        IF firstelement$ = "AS" THEN
+            l$ = SCase$("As")
+            t$ = ""
+            wordsInTypeName = 0
+            DO
+                nextElement$ = getelement$(a$, 2 + wordsInTypeName)
+                IF nextElement$ = "," THEN
+                    'element-list
+                    wordsInTypeName = wordsInTypeName - 2
+                    EXIT DO
+                END IF
+
+                wordsInTypeName = wordsInTypeName + 1
+                IF wordsInTypeName = n - 2 THEN
+                    'single element in line
+                    wordsInTypeName = wordsInTypeName - 1
+                    EXIT DO
+                END IF
+            LOOP
+
+            t$ = getelements$(a$, 2, 2 + wordsInTypeName)
+            typ = typname2typ(t$)
+            IF Error_Happened THEN GOTO errmes
+            IF typ = 0 THEN a$ = "Undefined type": GOTO errmes
+            IF typ AND ISUDT THEN
+                IF UCASE$(RTRIM$(t$)) = "MEM" AND RTRIM$(udtxcname(typ AND 511)) = "_MEM" AND qb64prefix_set = 1 THEN
+                    t$ = MID$(RTRIM$(udtxcname(typ AND 511)), 2)
+                ELSE
+                    t$ = RTRIM$(udtxcname(typ AND 511))
+                END IF
+                l$ = l$ + sp + t$
             ELSE
-                t$ = RTRIM$(udtxcname(typ AND 511))
+                l$ = l$ + sp + SCase2$(t$)
             END IF
+
+            'Now add each variable:
+            FOR i = 3 + wordsInTypeName TO n
+                thisElement$ = getelement$(ca$, i)
+                IF thisElement$ = "," THEN
+                    l$ = l$ + thisElement$
+                ELSE
+                    l$ = l$ + sp + thisElement$
+                END IF
+            NEXT
+            layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
+        ELSE
+            l$ = getelement(ca$, 1) + sp + SCase$("As")
+            t$ = getelements$(a$, 3, n)
+            typ = typname2typ(t$)
+            IF Error_Happened THEN GOTO errmes
+            IF typ = 0 THEN a$ = "Undefined type": GOTO errmes
+            IF typ AND ISUDT THEN
+                IF UCASE$(RTRIM$(t$)) = "MEM" AND RTRIM$(udtxcname(typ AND 511)) = "_MEM" AND qb64prefix_set = 1 THEN
+                    t$ = MID$(RTRIM$(udtxcname(typ AND 511)), 2)
+                ELSE
+                    t$ = RTRIM$(udtxcname(typ AND 511))
+                END IF
+                l$ = l$ + sp + t$
+            ELSE
+                l$ = l$ + sp + SCase2$(t$)
+            END IF
+            layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
         END IF
-        l$ = l$ + sp + t$
-        layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
         GOTO finishednonexec
 
     END IF 'defining type
 
     IF firstelement$ = "TYPE" THEN
         IF n <> 2 THEN a$ = "Expected TYPE type-name": GOTO errmes
-        l$ = "TYPE" + sp + getelement(ca$, 2)
+        l$ = SCase$("Type") + sp + getelement(ca$, 2)
         layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
         definingtype = 1
         definingtypeerror = linenumber
@@ -3609,13 +3715,13 @@ DO
                 staticlinkedlibrary = 0
 
                 x = 3
-                l$ = "DECLARE" + sp + "LIBRARY"
+                l$ = SCase$("Declare" + sp + "Library")
 
                 IF secondelement$ = "DYNAMIC" THEN
                     e$ = getelement$(a$, 3): IF e$ <> "LIBRARY" THEN a$ = "Expected DYNAMIC LIBRARY " + CHR$(34) + "..." + CHR$(34): GOTO errmes
                     dynamiclibrary = 1
                     x = 4
-                    l$ = "DECLARE" + sp + "DYNAMIC" + sp + "LIBRARY"
+                    l$ = SCase$("Declare" + sp + "Dynamic" + sp + "Library")
                     IF n = 3 THEN a$ = "Expected DECLARE DYNAMIC LIBRARY " + CHR$(34) + "..." + CHR$(34): GOTO errmes
                     indirectlibrary = 1
                 END IF
@@ -3624,14 +3730,14 @@ DO
                     e$ = getelement$(a$, 3): IF e$ <> "LIBRARY" THEN a$ = "Expected CUSTOMTYPE LIBRARY": GOTO errmes
                     customtypelibrary = 1
                     x = 4
-                    l$ = "DECLARE" + sp + "CUSTOMTYPE" + sp + "LIBRARY"
+                    l$ = SCase$("Declare" + sp + "CustomType" + sp + "Library")
                     indirectlibrary = 1
                 END IF
 
                 IF secondelement$ = "STATIC" THEN
                     e$ = getelement$(a$, 3): IF e$ <> "LIBRARY" THEN a$ = "Expected STATIC LIBRARY": GOTO errmes
                     x = 4
-                    l$ = "DECLARE" + sp + "STATIC" + sp + "LIBRARY"
+                    l$ = SCase$("Declare" + sp + "Static" + sp + "Library")
                     staticlinkedlibrary = 1
                 END IF
 
@@ -4462,7 +4568,11 @@ DO
             a$ = "Unregistered SUB/FUNCTION encountered": GOTO errmes
             createsf:
             IF UCASE$(e$) = "_GL" THEN e$ = "_GL"
-            l$ = firstelement$ + sp + e$ + symbol$
+            IF firstelement$ = "SUB" THEN
+                l$ = SCase$("Sub") + sp + e$ + symbol$
+            ELSE
+                l$ = SCase$("Function") + sp + e$ + symbol$
+            END IF
             id2 = id
             targetid = currentid
 
@@ -4480,9 +4590,9 @@ DO
                         ee$ = RIGHT$(ee$, LEN(ee$) - 1)
                         x = INSTR(ee$, CHR$(34)): IF x = 0 THEN a$ = "Expected " + CHR$(34): GOTO errmes
                         ee$ = LEFT$(ee$, x - 1)
-                        l$ = l$ + sp + "ALIAS" + sp + CHR_QUOTE + ee$ + CHR_QUOTE
+                        l$ = l$ + sp + SCase$("Alias") + sp + CHR_QUOTE + ee$ + CHR_QUOTE
                     ELSE
-                        l$ = l$ + sp + "ALIAS" + sp + ee$
+                        l$ = l$ + sp + SCase$("Alias") + sp + ee$
                     END IF
 
                     'strip fix046$ (created by unquoted periods)
@@ -4683,7 +4793,7 @@ DO
                         IF UCASE$(e$) = "BYVAL" THEN
                             IF declaringlibrary = 0 THEN a$ = "BYVAL can currently only be used with DECLARE LIBRARY": GOTO errmes
                             byvalue = 1: a2$ = RIGHT$(a2$, LEN(a2$) - 6)
-                            IF RIGHT$(l$, 1) = "(" THEN l$ = l$ + sp2 + "BYVAL" ELSE l$ = l$ + sp + "BYVAL"
+                            IF RIGHT$(l$, 1) = "(" THEN l$ = l$ + sp2 + SCase$("ByVal") ELSE l$ = l$ + sp + SCase$("Byval")
                             n2 = numelements(a2$): e$ = getelement$(a2$, 1)
                         END IF
 
@@ -4717,7 +4827,7 @@ DO
                             IF UCASE$(e$) = "AS" THEN
                                 IF m <> 0 AND m <> 2 THEN a$ = "Syntax error": GOTO errmes
                                 m = 3
-                                l$ = l$ + sp + "AS"
+                                l$ = l$ + sp + SCase$("As")
                                 GOTO gotaa2
                             END IF
                             IF m = 1 THEN l$ = l$ + sp + e$: GOTO gotaa2 'ignore contents of option bracket telling how many dimensions (add to layout as is)
@@ -4739,12 +4849,14 @@ DO
                                     t3$ = MID$(RTRIM$(udtxcname(typ AND 511)), 2)
                                 END IF
                                 t3$ = RTRIM$(udtxcname(typ AND 511))
+                                l$ = l$ + sp + t3$
                             ELSE
-                                FOR t3i = 1 TO LEN(t3i)
+                                FOR t3i = 1 TO LEN(t3$)
                                     IF ASC(t3$, t3i) = 32 THEN ASC(t3$, t3i) = ASC(sp)
                                 NEXT
+                                t3$ = SCase2$(t3$)
+                                l$ = l$ + sp + t3$
                             END IF
-                            l$ = l$ + sp + t3$
                         END IF
 
                         IF t2$ = "" THEN t2$ = symbol2$
@@ -4867,7 +4979,7 @@ DO
             END IF 'n>2
             AllowLocalName = 0
 
-            IF addstatic2layout THEN l$ = l$ + sp + "STATIC"
+            IF addstatic2layout THEN l$ = l$ + sp + SCase$("Static")
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
 
             PrintToBuffer 17, ");", 0
@@ -5015,7 +5127,8 @@ DO
                     controllevel = controllevel - 1
                 END IF
 
-                l$ = firstelement$ + sp + secondelement$
+                IF LEFT$(subfunc, 4) = "SUB_" THEN secondelement$ = SCase$("Sub") ELSE secondelement$ = SCase$("Function")
+                l$ = SCase$("End") + sp + secondelement$
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
 
                 staticarraylist = "": staticarraylistn = 0 'remove previously listed arrays
@@ -5059,7 +5172,7 @@ DO
 
 
     IF n >= 1 AND firstelement$ = "CONST" THEN
-        l$ = "CONST"
+        l$ = SCase$("Const")
         'DEF... do not change type, the expression is stored in a suitable type
         'based on its value if type isn't forced/specified
         IF n < 3 THEN a$ = "Expected CONST name = value/expression": GOTO errmes
@@ -5124,15 +5237,15 @@ DO
     predefine:
     IF n >= 2 THEN
         asreq = 0
-        IF firstelement$ = "DEFINT" THEN a$ = a$ + sp + "AS" + sp + "INTEGER": n = n + 2: GOTO definetype
-        IF firstelement$ = "DEFLNG" THEN a$ = a$ + sp + "AS" + sp + "LONG": n = n + 2: GOTO definetype
-        IF firstelement$ = "DEFSNG" THEN a$ = a$ + sp + "AS" + sp + "SINGLE": n = n + 2: GOTO definetype
-        IF firstelement$ = "DEFDBL" THEN a$ = a$ + sp + "AS" + sp + "DOUBLE": n = n + 2: GOTO definetype
-        IF firstelement$ = "DEFSTR" THEN a$ = a$ + sp + "AS" + sp + "STRING": n = n + 2: GOTO definetype
+        IF firstelement$ = "DEFINT" THEN l$ = SCase$("DefInt"): a$ = a$ + sp + "AS" + sp + "INTEGER": n = n + 2: GOTO definetype
+        IF firstelement$ = "DEFLNG" THEN l$ = SCase$("DefLng"): a$ = a$ + sp + "AS" + sp + "LONG": n = n + 2: GOTO definetype
+        IF firstelement$ = "DEFSNG" THEN l$ = SCase$("DefSng"): a$ = a$ + sp + "AS" + sp + "SINGLE": n = n + 2: GOTO definetype
+        IF firstelement$ = "DEFDBL" THEN l$ = SCase$("DefDbl"): a$ = a$ + sp + "AS" + sp + "DOUBLE": n = n + 2: GOTO definetype
+        IF firstelement$ = "DEFSTR" THEN l$ = SCase$("DefStr"): a$ = a$ + sp + "AS" + sp + "STRING": n = n + 2: GOTO definetype
         IF firstelement$ = "_DEFINE" OR (firstelement$ = "DEFINE" AND qb64prefix_set = 1) THEN
             asreq = 1
+            IF firstelement$ = "_DEFINE" THEN l$ = SCase$("_Define") ELSE l$ = SCase$("Define")
             definetype:
-            l$ = firstelement$
             'get type from rhs
             typ$ = ""
             typ2$ = ""
@@ -5165,7 +5278,7 @@ DO
 
             IF i = n THEN
                 IF predefining = 1 THEN GOTO predefined
-                IF asreq THEN l$ = l$ + sp + "AS" + sp + typ2$
+                IF asreq THEN l$ = l$ + sp + SCase$("As") + sp + typ2$
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 GOTO finishednonexec
             END IF
@@ -5190,7 +5303,7 @@ DO
                 l$ = l$ + sp2 + e$
                 IF i = n THEN
                     IF predefining = 1 THEN GOTO predefined
-                    IF asreq THEN l$ = l$ + sp + "AS" + sp + typ2$
+                    IF asreq THEN l$ = l$ + sp + SCase$("As") + sp + typ2$
                     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                     GOTO finishednonexec
                 END IF
@@ -5214,7 +5327,7 @@ DO
     IF n >= 1 THEN
         IF firstelement$ = "NEXT" THEN
 
-            l$ = "NEXT"
+            l$ = SCase$("Next")
             IF n = 1 THEN GOTO simplenext
             v$ = ""
             FOR i = 2 TO n
@@ -5285,7 +5398,7 @@ DO
             IF n >= 2 THEN
                 e$ = fixoperationorder(getelements$(ca$, 2, n))
                 IF Error_Happened THEN GOTO errmes
-                l$ = "WHILE" + sp + tlayout$
+                l$ = SCase$("While") + sp + tlayout$
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 e$ = evaluate(e$, typ)
                 IF Error_Happened THEN GOTO errmes
@@ -5311,7 +5424,7 @@ DO
             PrintToBuffer 12, "}", 0
             PrintToBuffer 12, "ww_exit_" + str2$(controlid(controllevel)) + ":;", 0
             controllevel = controllevel - 1
-            l$ = "WEND"
+            l$ = SCase$("Wend")
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             GOTO finishednonexec '***no error causing code, event checking done by WHILE***
         END IF
@@ -5332,11 +5445,11 @@ DO
 
             controllevel = controllevel + 1
             controlref(controllevel) = linenumber
-            l$ = "DO"
+            l$ = SCase$("Do")
             IF n >= 2 THEN
                 whileuntil = 0
-                IF secondelement$ = "WHILE" THEN whileuntil = 1: l$ = l$ + sp + "WHILE"
-                IF secondelement$ = "UNTIL" THEN whileuntil = 2: l$ = l$ + sp + "UNTIL"
+                IF secondelement$ = "WHILE" THEN whileuntil = 1: l$ = l$ + sp + SCase$("While")
+                IF secondelement$ = "UNTIL" THEN whileuntil = 2: l$ = l$ + sp + SCase$("Until")
                 IF whileuntil = 0 THEN a$ = "DO ERROR! Expected WHILE or UNTIL after DO.": GOTO errmes
                 IF whileuntil > 0 AND n = 2 THEN a$ = "Condition expected after WHILE/UNTIL": GOTO errmes
                 e$ = fixoperationorder(getelements$(ca$, 3, n))
@@ -5362,14 +5475,14 @@ DO
 
     IF n >= 1 THEN
         IF firstelement$ = "LOOP" THEN
-            l$ = "LOOP"
+            l$ = SCase$("Loop")
             IF controltype(controllevel) <> 3 AND controltype(controllevel) <> 4 THEN a$ = "PROGRAM FLOW ERROR!": GOTO errmes
             IF n >= 2 THEN
                 IF NoChecks = 0 THEN PrintToBuffer 12, "S_" + str2$(statementn) + ":;", 0: dynscope = 1
                 IF controltype(controllevel) = 4 THEN a$ = "PROGRAM FLOW ERROR!": GOTO errmes
                 whileuntil = 0
-                IF secondelement$ = "WHILE" THEN whileuntil = 1: l$ = l$ + sp + "WHILE"
-                IF secondelement$ = "UNTIL" THEN whileuntil = 2: l$ = l$ + sp + "UNTIL"
+                IF secondelement$ = "WHILE" THEN whileuntil = 1: l$ = l$ + sp + SCase$("While")
+                IF secondelement$ = "UNTIL" THEN whileuntil = 2: l$ = l$ + sp + SCase$("Until")
                 IF whileuntil = 0 THEN a$ = "LOOP ERROR! Expected WHILE or UNTIL after LOOP.": GOTO errmes
                 IF whileuntil > 0 AND n = 2 THEN a$ = "Condition expected after WHILE/UNTIL": GOTO errmes
                 e$ = fixoperationorder(getelements$(ca$, 3, n))
@@ -5411,7 +5524,7 @@ DO
         IF firstelement$ = "FOR" THEN
             IF NoChecks = 0 THEN PrintToBuffer 12, "S_" + str2$(statementn) + ":;", 0: dynscope = 1
 
-            l$ = "FOR"
+            l$ = SCase$("For")
 
             'prevents code from being placed before 'CASE condition' in a SELECT CASE block
             IF SelectCaseCounter > 0 AND SelectCaseHasCaseBlock(SelectCaseCounter) = 0 THEN
@@ -5522,7 +5635,7 @@ DO
             'final
             e$ = fixoperationorder$(p2$)
             IF Error_Happened THEN GOTO errmes
-            l$ = l$ + sp + "TO" + sp + tlayout$
+            l$ = l$ + sp + SCase$("To") + sp + tlayout$
             e$ = evaluatetotyp(e$, ctyp)
             IF Error_Happened THEN GOTO errmes
             PrintToBuffer 12, "fornext_finalvalue" + u$ + "=" + e$ + ";", 0
@@ -5530,7 +5643,7 @@ DO
             'step
             e$ = fixoperationorder$(p3$)
             IF Error_Happened THEN GOTO errmes
-            IF stepused = 1 THEN l$ = l$ + sp + "STEP" + sp + tlayout$
+            IF stepused = 1 THEN l$ = l$ + sp + SCase$("Step") + sp + tlayout$
             e$ = evaluatetotyp(e$, ctyp)
             IF Error_Happened THEN GOTO errmes
             PrintToBuffer 12, "fornext_step" + u$ + "=" + e$ + ";", 0
@@ -5603,7 +5716,7 @@ DO
                     PrintToBuffer 12, "}else{", 0
                     controlstate(controllevel) = 2
                     IF lineelseused = 0 THEN lhscontrollevel = lhscontrollevel - 1
-                    l$ = "ELSE"
+                    l$ = SCase$("Else")
                     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                     GOTO finishednonexec '***no error causing code, event checking done by IF***
                 END IF
@@ -5627,7 +5740,7 @@ DO
                     PrintToBuffer 12, "}else{", 0
                     e$ = fixoperationorder$(getelements$(ca$, 2, n - 1))
                     IF Error_Happened THEN GOTO errmes
-                    l$ = "ELSEIF" + sp + tlayout$ + sp + "THEN"
+                    l$ = SCase$("ElseIf") + sp + tlayout$ + sp + SCase$("Then")
                     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                     e$ = evaluate(e$, typ)
                     IF Error_Happened THEN GOTO errmes
@@ -5672,7 +5785,7 @@ DO
 
             e$ = fixoperationorder$(getelements(ca$, 2, n - 1))
             IF Error_Happened THEN GOTO errmes
-            l$ = "IF" + sp + tlayout$
+            l$ = SCase$("If") + sp + tlayout$
             e$ = evaluate(e$, typ)
             IF Error_Happened THEN GOTO errmes
             IF (typ AND ISREFERENCE) THEN e$ = refer$(e$, typ, 0)
@@ -5688,7 +5801,7 @@ DO
                 PrintToBuffer 12, "if ((" + e$ + ")||new_error){", 0
             END IF
 
-            IF iftype = 1 THEN l$ = l$ + sp + "THEN" 'note: 'GOTO' will be added when iftype=2
+            IF iftype = 1 THEN l$ = l$ + sp + SCase$("Then") 'note: 'GOTO' will be added when iftype=2
             layoutdone = 1: IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
 
             IF iftype = 2 THEN 'IF ... GOTO
@@ -5705,7 +5818,7 @@ DO
         IF controltype(controllevel) <> 1 THEN a$ = "END IF without IF": GOTO errmes
         layoutdone = 1
         IF impliedendif = 0 THEN
-            l$ = "END IF"
+            l$ = SCase$("End If")
             IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
         END IF
 
@@ -5726,7 +5839,7 @@ DO
             IF controltype(controllevel) <> 1 THEN a$ = "END IF without IF": GOTO errmes
             layoutdone = 1
             IF impliedendif = 0 THEN
-                l$ = "END" + sp + "IF"
+                l$ = SCase$("End" + sp + "If")
                 IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
             END IF
 
@@ -5760,14 +5873,14 @@ DO
                 IF n = 2 THEN a$ = "Expected SELECT CASE expression": GOTO errmes
                 e$ = fixoperationorder(getelements$(ca$, 3, n))
                 IF Error_Happened THEN GOTO errmes
-                l$ = "SELECT EVERYCASE " + tlayout$
+                l$ = SCase$("Select EveryCase ") + tlayout$
             ELSE
                 EveryCaseSet(SelectCaseCounter) = 0
                 IF n = 1 OR secondelement$ <> "CASE" THEN a$ = "Expected CASE or EVERYCASE": GOTO errmes
                 IF n = 2 THEN a$ = "Expected SELECT CASE expression": GOTO errmes
                 e$ = fixoperationorder(getelements$(ca$, 3, n))
                 IF Error_Happened THEN GOTO errmes
-                l$ = "SELECT CASE " + tlayout$
+                l$ = SCase$("Select Case ") + tlayout$
             END IF
 
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
@@ -5874,7 +5987,7 @@ DO
 
             controllevel = controllevel - 1
             SelectCaseCounter = SelectCaseCounter - 1
-            l$ = "END" + sp + "SELECT"
+            l$ = SCase$("End" + sp + "Select")
             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             GOTO finishednonexec '***no error causing code, event checking done by SELECT CASE***
         END IF
@@ -5890,7 +6003,7 @@ DO
     IF n >= 1 THEN
         IF firstelement$ = "CASE" THEN
 
-            l$ = "CASE"
+            l$ = SCase$("Case")
             'complete current case if necessary
             '18=CASE (awaiting END SELECT/CASE/CASE ELSE)
             '19=CASE ELSE (awaiting END SELECT)
@@ -5971,7 +6084,7 @@ DO
                     IF EveryCaseSet(SelectCaseCounter) THEN PrintToBuffer 12, "if (sc_" + str2$(controlid(controllevel)) + "_var==0) {", 0
                     controllevel = controllevel + 1: controltype(controllevel) = 19
                     controlref(controllevel) = controlref(controllevel - 1)
-                    l$ = l$ + sp + "ELSE"
+                    l$ = l$ + sp + SCase$("Else")
                     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                     GOTO finishednonexec '***no error causing code, event checking done by SELECT CASE***
                 END IF
@@ -6021,7 +6134,7 @@ DO
                             IF i2 = 1 THEN e$ = el$ ELSE e$ = er$
                             e$ = fixoperationorder(e$)
                             IF Error_Happened THEN GOTO errmes
-                            IF i2 = 1 THEN l$ = l$ + sp + tlayout$ ELSE l$ = l$ + sp + "TO" + sp + tlayout$
+                            IF i2 = 1 THEN l$ = l$ + sp + tlayout$ ELSE l$ = l$ + sp + SCase$("TO") + sp + tlayout$
                             e$ = evaluate(e$, typ)
                             IF Error_Happened THEN GOTO errmes
                             IF (typ AND ISREFERENCE) THEN e$ = refer(e$, typ, 0)
@@ -6089,7 +6202,7 @@ DO
                         IF o$ = ">=" THEN o = 1
                         IF o$ = "<=" THEN o = 1
                         IF o <> 1 THEN a$ = "Expected IS =,<>,>,<,>=,<= expression": GOTO errmes
-                        l$ = l$ + sp + "IS" + sp + o2$
+                        l$ = l$ + sp + SCase$("Is") + sp + o2$
                         e$ = getelements$(e$, 3, n2)
                         'fall through to type 3 using modified e$ & o$
                     END IF
@@ -6170,7 +6283,7 @@ DO
     IF n > 1 THEN
         IF firstelement$ = "PALETTE" THEN
             IF secondelement$ = "USING" THEN
-                l$ = "PALETTE" + sp + "USING" + sp
+                l$ = SCase$("Palette" + sp + "Using" + sp)
                 IF n < 3 THEN a$ = "Expected PALETTE USING array-name": GOTO errmes
                 'check array
                 e$ = getelement$(ca$, 3)
@@ -6213,22 +6326,22 @@ DO
 
     IF firstelement$ = "KEY" THEN
         IF n = 1 THEN a$ = "Expected KEY ...": GOTO errmes
-        l$ = "KEY" + sp
+        l$ = SCase$("KEY") + sp
         IF secondelement$ = "OFF" THEN
             IF n > 2 THEN a$ = "Expected KEY OFF only": GOTO errmes
-            l$ = l$ + "OFF": layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
+            l$ = l$ + SCase$("Off"): layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             PrintToBuffer 12, "key_off();", 0
             GOTO finishedline
         END IF
         IF secondelement$ = "ON" THEN
             IF n > 2 THEN a$ = "Expected KEY ON only": GOTO errmes
-            l$ = l$ + "ON": layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
+            l$ = l$ + SCase$("On"): layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             PrintToBuffer 12, "key_on();", 0
             GOTO finishedline
         END IF
         IF secondelement$ = "LIST" THEN
             IF n > 2 THEN a$ = "Expected KEY LIST only": GOTO errmes
-            l$ = l$ + "LIST": layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
+            l$ = l$ + SCase$("List"): layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             PrintToBuffer 12, "key_list();", 0
             GOTO finishedline
         END IF
@@ -6286,7 +6399,7 @@ DO
         GOTO fielderror
         fieldgotfn:
         IF e$ = "#" OR LEN(e$) = 0 THEN GOTO fielderror
-        IF LEFT$(e$, 2) = "#" + sp THEN e$ = RIGHT$(e$, LEN(e$) - 2): l$ = "FIELD" + sp + "#" + sp2 ELSE l$ = "FIELD" + sp
+        IF LEFT$(e$, 2) = "#" + sp THEN e$ = RIGHT$(e$, LEN(e$) - 2): l$ = SCase$("Field") + sp + "#" + sp2 ELSE l$ = SCase$("Field") + sp
         e$ = fixoperationorder(e$)
         IF Error_Happened THEN GOTO errmes
         l$ = l$ + tlayout$ + sp2 + "," + sp
@@ -6313,7 +6426,7 @@ DO
         IF LEN(e$) = 0 THEN GOTO fielderror
         e$ = fixoperationorder(e$)
         IF Error_Happened THEN GOTO errmes
-        l$ = l$ + tlayout$ + sp + "AS" + sp
+        l$ = l$ + tlayout$ + sp + SCase$("As") + sp
         sizee$ = evaluatetotyp(e$, 32&)
         IF Error_Happened THEN GOTO errmes
 
@@ -6377,10 +6490,11 @@ DO
     IF n = 2 THEN
         IF firstelement$ = "EXIT" THEN
 
-            l$ = firstelement$ + sp + secondelement$
+            l$ = SCase$("Exit") + sp
 
             IF secondelement$ = "DO" THEN
                 'scan backwards until previous control level reached
+                l$ = l$ + SCase$("Do")
                 FOR i = controllevel TO 1 STEP -1
                     t = controltype(i)
                     IF t = 3 OR t = 4 THEN
@@ -6394,6 +6508,7 @@ DO
 
             IF secondelement$ = "FOR" THEN
                 'scan backwards until previous control level reached
+                l$ = l$ + SCase$("For")
                 FOR i = controllevel TO 1 STEP -1
                     t = controltype(i)
                     IF t = 2 THEN
@@ -6407,6 +6522,7 @@ DO
 
             IF secondelement$ = "WHILE" THEN
                 'scan backwards until previous control level reached
+                l$ = l$ + SCase$("While")
                 FOR i = controllevel TO 1 STEP -1
                     t = controltype(i)
                     IF t = 5 THEN
@@ -6420,6 +6536,7 @@ DO
 
             IF secondelement$ = "SELECT" THEN
                 'scan backwards until previous control level reached
+                l$ = l$ + SCase$("Select")
                 FOR i = controllevel TO 1 STEP -1
                     t = controltype(i)
                     IF t = 18 OR t = 19 THEN 'CASE/CASE ELSE
@@ -6433,6 +6550,7 @@ DO
 
             IF secondelement$ = "CASE" THEN
                 'scan backwards until previous control level reached
+                l$ = l$ + SCase$("Case")
                 FOR i = controllevel TO 1 STEP -1
                     t = controltype(i)
                     IF t = 18 THEN 'CASE
@@ -6465,7 +6583,7 @@ DO
             IF i > n THEN a$ = "Expected (": GOTO errmes
             a2$ = getelement$(ca$, i): i = i + 1
             IF a2$ <> "(" THEN a$ = "Expected (": GOTO errmes
-            l$ = "ON" + sp + "STRIG" + sp2 + "("
+            l$ = SCase$("On" + sp + "Strig" + sp2 + "(")
             IF i > n THEN a$ = "Expected ...": GOTO errmes
             B = 0
             x = 0
@@ -6562,7 +6680,7 @@ DO
                     Labels(r).Error_Line = linenumber
                     Labels(r).Scope_Restriction = subfuncn
                 END IF 'x
-                l$ = l$ + "GOSUB" + sp + tlayout$
+                l$ = l$ + SCase$("GoSub") + sp + tlayout$
 
                 PrintToBuffer 30, "if(strig_event_id==" + str2$(onstrigid) + ")goto LABEL_" + a2$ + ";", 0
 
@@ -6656,7 +6774,7 @@ DO
             IF i > n THEN a$ = "Expected (": GOTO errmes
             a2$ = getelement$(ca$, i): i = i + 1
             IF a2$ <> "(" THEN a$ = "Expected (": GOTO errmes
-            l$ = "ON" + sp + "TIMER" + sp2 + "("
+            l$ = SCase$("On" + sp + "Timer" + sp2 + "(")
             IF i > n THEN a$ = "Expected ...": GOTO errmes
             B = 0
             x = 0
@@ -6742,7 +6860,7 @@ DO
                     Labels(r).Error_Line = linenumber
                     Labels(r).Scope_Restriction = subfuncn
                 END IF 'x
-                l$ = l$ + "GOSUB" + sp + tlayout$
+                l$ = l$ + SCase$("GoSub") + sp + tlayout$
 
                 PrintToBuffer 25, "if(timer_event_id==" + str2$(ontimerid) + ")goto LABEL_" + a2$ + ";", 0
 
@@ -6835,7 +6953,7 @@ DO
             IF i > n THEN a$ = "Expected (": GOTO errmes
             a2$ = getelement$(ca$, i): i = i + 1
             IF a2$ <> "(" THEN a$ = "Expected (": GOTO errmes
-            l$ = "ON" + sp + "KEY" + sp2 + "("
+            l$ = SCase$("On" + sp + "Key" + sp2 + "(")
             IF i > n THEN a$ = "Expected ...": GOTO errmes
             B = 0
             x = 0
@@ -6901,7 +7019,7 @@ DO
                     Labels(r).Error_Line = linenumber
                     Labels(r).Scope_Restriction = subfuncn
                 END IF 'x
-                l$ = l$ + "GOSUB" + sp + tlayout$
+                l$ = l$ + SCase$("GoSub") + sp + tlayout$
 
                 PrintToBuffer 28, "if(key_event_id==" + str2$(onkeyid) + ")goto LABEL_" + a2$ + ";", 0
 
@@ -7012,44 +7130,195 @@ DO
 
 
 
-            l$ = "SHARED"
+            l$ = SCase$("Shared")
             subfuncshr:
 
             'get variable name
             n$ = getelement$(ca$, i): i = i + 1
 
-            IF n$ = "" THEN a$ = "Expected SHARED variable-name": GOTO errmes
+            IF n$ = "" THEN a$ = "Expected SHARED variable-name or SHARED AS type variable-list": GOTO errmes
 
-            s$ = removesymbol(n$)
-            IF Error_Happened THEN GOTO errmes
-            l2$ = s$ 'either symbol or nothing
+            IF UCASE$(n$) <> "AS" THEN
+                'traditional dim syntax for SHARED
+                s$ = removesymbol(n$)
+                IF Error_Happened THEN GOTO errmes
+                l2$ = s$ 'either symbol or nothing
 
-            'array?
-            a = 0
-            IF getelement$(a$, i) = "(" THEN
-                IF getelement$(a$, i + 1) <> ")" THEN a$ = "Expected ()": GOTO errmes
-                i = i + 2
-                a = 1
-                l2$ = l2$ + sp2 + "(" + sp2 + ")"
-            END IF
+                'array?
+                a = 0
+                IF getelement$(a$, i) = "(" THEN
+                    IF getelement$(a$, i + 1) <> ")" THEN a$ = "Expected ()": GOTO errmes
+                    i = i + 2
+                    a = 1
+                    l2$ = l2$ + sp2 + "(" + sp2 + ")"
+                END IF
 
-            method = 1
+                method = 1
 
-            'specific type?
-            t$ = ""
-            ts$ = ""
-            t3$ = ""
-            IF getelement$(a$, i) = "AS" THEN
-                l2$ = l2$ + sp + "AS"
-                getshrtyp:
+                'specific type?
+                t$ = ""
+                ts$ = ""
+                t3$ = ""
+                IF getelement$(a$, i) = "AS" THEN
+                    l2$ = l2$ + sp + SCase$("As")
+                    getshrtyp:
+                    i = i + 1
+                    t2$ = getelement$(a$, i)
+                    IF t2$ <> "," AND t2$ <> "" THEN
+                        IF t$ = "" THEN t$ = t2$ ELSE t$ = t$ + " " + t2$
+                        IF t3$ = "" THEN t3$ = t2$ ELSE t3$ = t3$ + sp + t2$
+                        GOTO getshrtyp
+                    END IF
+                    IF t$ = "" THEN a$ = "Expected AS type": GOTO errmes
+
+                    t = typname2typ(t$)
+                    IF Error_Happened THEN GOTO errmes
+                    IF t AND ISINCONVENTIONALMEMORY THEN t = t - ISINCONVENTIONALMEMORY
+                    IF t AND ISPOINTER THEN t = t - ISPOINTER
+                    IF t AND ISREFERENCE THEN t = t - ISREFERENCE
+                    tsize = typname2typsize
+                    method = 0
+                    IF (t AND ISUDT) = 0 THEN
+                        ts$ = type2symbol$(t$)
+                        l2$ = l2$ + sp + SCase2$(t3$)
+                    ELSE
+                        t3$ = RTRIM$(udtxcname(t AND 511))
+                        IF RTRIM$(udtxcname(t AND 511)) = "_MEM" AND UCASE$(t$) = "MEM" AND qb64prefix_set = 1 THEN
+                            t3$ = MID$(RTRIM$(udtxcname(t AND 511)), 2)
+                        END IF
+                        l2$ = l2$ + sp + t3$
+                    END IF
+                    IF Error_Happened THEN GOTO errmes
+
+                END IF 'as
+
+                IF LEN(s$) <> 0 AND LEN(t$) <> 0 THEN a$ = "Expected symbol or AS type after variable name": GOTO errmes
+
+                'no symbol of type specified, apply default
+                IF s$ = "" AND t$ = "" THEN
+                    IF LEFT$(n$, 1) = "_" THEN v = 27 ELSE v = ASC(UCASE$(n$)) - 64
+                    s$ = defineextaz(v)
+                END IF
+
+                NormalSharedBlock:
+                'switch to main module
+                oldsubfunc$ = subfunc$
+                subfunc$ = ""
+                defdatahandle = 18
+                CLOSE #13: OPEN tmpdir$ + "maindata.txt" FOR APPEND AS #13
+                CLOSE #19: OPEN tmpdir$ + "mainfree.txt" FOR APPEND AS #19
+
+                'use 'try' to locate the variable (if it already exists)
+                n2$ = n$ + s$ + ts$ 'note: either ts$ or s$ will exist unless it is a UDT
+                try = findid(n2$)
+                IF Error_Happened THEN GOTO errmes
+                DO WHILE try
+                    IF a THEN
+                        'an array
+
+                        IF id.arraytype THEN
+                            IF LEN(t$) = 0 THEN GOTO shrfound
+                            t2 = id.arraytype: t2size = id.tsize
+                            IF t2 AND ISINCONVENTIONALMEMORY THEN t2 = t2 - ISINCONVENTIONALMEMORY
+                            IF t2 AND ISPOINTER THEN t2 = t2 - ISPOINTER
+                            IF t2 AND ISREFERENCE THEN t2 = t2 - ISREFERENCE
+                            IF t = t2 AND tsize = t2size THEN GOTO shrfound
+                        END IF
+
+                    ELSE
+                        'not an array
+
+                        IF id.t THEN
+                            IF LEN(t$) = 0 THEN GOTO shrfound
+                            t2 = id.t: t2size = id.tsize
+                            IF t2 AND ISINCONVENTIONALMEMORY THEN t2 = t2 - ISINCONVENTIONALMEMORY
+                            IF t2 AND ISPOINTER THEN t2 = t2 - ISPOINTER
+                            IF t2 AND ISREFERENCE THEN t2 = t2 - ISREFERENCE
+
+                            IF Debug THEN PRINT #9, "SHARED:comparing:"; t; t2, tsize; t2size
+
+                            IF t = t2 AND tsize = t2size THEN GOTO shrfound
+                        END IF
+
+                    END IF
+
+                    IF try = 2 THEN findanotherid = 1: try = findid(n2$) ELSE try = 0
+                    IF Error_Happened THEN GOTO errmes
+                LOOP
+                'unknown variable
+                IF a THEN a$ = "Array '" + n$ + "' not defined": GOTO errmes
+                'create variable
+                IF LEN(s$) THEN typ$ = s$ ELSE typ$ = t$
+                IF optionexplicit THEN a$ = "Variable '" + n$ + "' (" + symbol2fulltypename$(typ$) + ") not defined": GOTO errmes
+                bypassNextVariable = -1
+                retval = dim2(n$, typ$, method, "")
+                IF Error_Happened THEN GOTO errmes
+                'note: variable created!
+
+                shrfound:
+                IF newSharedSyntax = 0 THEN
+                    l$ = l$ + sp + RTRIM$(id.cn) + l2$
+                ELSE
+                    IF sharedAsLayoutAdded = 0 THEN
+                        sharedAsLayoutAdded = -1
+                        l$ = l$ + l2$ + sp$ + RTRIM$(id.cn) + l3$
+                    ELSE
+                        l$ = l$ + sp$ + RTRIM$(id.cn) + l3$
+                    END IF
+                END IF
+
+                ids(currentid).share = ids(currentid).share OR 2 'set as temporarily shared
+
+                'method must apply to the current sub/function regardless of how the variable was defined in 'main'
+                lmay = LEN(RTRIM$(id.mayhave)): lmust = LEN(RTRIM$(id.musthave))
+                IF lmay <> 0 OR lmust <> 0 THEN
+                    IF (method = 1 AND lmust = 0) OR (method = 0 AND lmay = 0) THEN
+                        revertmaymusthaven = revertmaymusthaven + 1
+                        revertmaymusthave(revertmaymusthaven) = currentid
+                        SWAP ids(currentid).musthave, ids(currentid).mayhave
+                    END IF
+                END IF
+
+                'switch back to sub/func
+                subfunc$ = oldsubfunc$
+                defdatahandle = 13
+                CLOSE #13: OPEN tmpdir$ + "data" + str2$(subfuncn) + ".txt" FOR APPEND AS #13
+                CLOSE #19: OPEN tmpdir$ + "free" + str2$(subfuncn) + ".txt" FOR APPEND AS #19
+
+                IF newSharedSyntax THEN RETURN
+
+                IF getelement$(a$, i) = "," THEN i = i + 1: l$ = l$ + sp2 + ",": GOTO subfuncshr
+                IF getelement$(a$, i) <> "" THEN a$ = "Expected ,": GOTO errmes
+
+                layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
+                GOTO finishedline
+            ELSE
+                'new dim syntax for SHARED!
+                i = i - 1 'relocate back to "AS"
+
+                'estabilish the data type:
+                t$ = ""
+                ts$ = ""
+                t3$ = ""
+                n$ = ""
+                previousElement$ = ""
+                l2$ = sp + SCase$("As")
+                sharedAsLayoutAdded = 0
+                getshrtyp2:
                 i = i + 1
                 t2$ = getelement$(a$, i)
-                IF t2$ <> "," AND t2$ <> "" THEN
-                    IF t$ = "" THEN t$ = t2$ ELSE t$ = t$ + " " + t2$
-                    IF t3$ = "" THEN t3$ = t2$ ELSE t3$ = t3$ + sp + t2$
-                    GOTO getshrtyp
+                IF t2$ <> "," AND t2$ <> "(" AND t2$ <> "" THEN
+                    'get first variable name
+                    n$ = getelement$(ca$, i)
+
+                    IF LEN(previousElement$) THEN
+                        IF t$ = "" THEN t$ = previousElement$ ELSE t$ = t$ + " " + previousElement$
+                        IF t3$ = "" THEN t3$ = previousElement$ ELSE t3$ = t3$ + sp + previousElement$
+                    END IF
+                    previousElement$ = t2$
+                    GOTO getshrtyp2
                 END IF
-                IF t$ = "" THEN a$ = "Expected AS type": GOTO errmes
+                IF t$ = "" THEN a$ = "Expected SHARED AS type variable-list or SHARED variable-name AS type": GOTO errmes
 
                 t = typname2typ(t$)
                 IF Error_Happened THEN GOTO errmes
@@ -7060,11 +7329,13 @@ DO
                 method = 0
                 IF (t AND ISUDT) = 0 THEN
                     ts$ = type2symbol$(t$)
+                    l2$ = l2$ + sp + SCase2$(t3$)
                 ELSE
                     t3$ = RTRIM$(udtxcname(t AND 511))
                     IF RTRIM$(udtxcname(t AND 511)) = "_MEM" AND UCASE$(t$) = "MEM" AND qb64prefix_set = 1 THEN
                         t3$ = MID$(RTRIM$(udtxcname(t AND 511)), 2)
                     END IF
+                    l2$ = l2$ + sp + t3$
                 END IF
                 IF Error_Happened THEN GOTO errmes
                 l2$ = l2$ + sp + t3$
@@ -7118,33 +7389,35 @@ DO
                         IF t = t2 AND tsize = t2size THEN GOTO shrfound
                     END IF
 
+                subfuncshr2:
+                s$ = removesymbol(n$)
+                IF Error_Happened THEN GOTO errmes
+                IF s$ <> "" THEN
+                    a$ = "Cannot use type symbol with SHARED AS type variable-list (" + s$ + ")"
+                    GOTO errmes
                 END IF
 
-                IF try = 2 THEN findanotherid = 1: try = findid(n2$) ELSE try = 0
-                IF Error_Happened THEN GOTO errmes
-            LOOP
-            'unknown variable
-            IF a THEN a$ = "Array '" + n$ + "' not defined": GOTO errmes
-            'create variable
-            IF LEN(s$) THEN typ$ = s$ ELSE typ$ = t$
-            IF optionexplicit THEN a$ = "Variable '" + n$ + "' (" + symbol2fulltypename$(typ$) + ") not defined": GOTO errmes
-            bypassNextVariable = -1
-            retval = dim2(n$, typ$, method, "")
-            IF Error_Happened THEN GOTO errmes
-            'note: variable created!
+                'array?
+                a = 0
+                l3$ = ""
+                IF getelement$(a$, i) = "(" THEN
+                    IF getelement$(a$, i + 1) <> ")" THEN a$ = "Expected ()": GOTO errmes
+                    i = i + 2
+                    a = 1
+                    l3$ = sp2 + "(" + sp2 + ")"
+                END IF
 
-            shrfound:
-            l$ = l$ + sp + RTRIM$(id.cn) + l2$
+                newSharedSyntax = -1
+                GOSUB NormalSharedBlock
+                newSharedSyntax = 0
 
-            ids(currentid).share = ids(currentid).share OR 2 'set as temporarily shared
+                IF getelement$(a$, i) = "," THEN
+                    i = i + 1
+                    l$ = l$ + sp2 + ","
 
-            'method must apply to the current sub/function regardless of how the variable was defined in 'main'
-            lmay = LEN(RTRIM$(id.mayhave)): lmust = LEN(RTRIM$(id.musthave))
-            IF lmay <> 0 OR lmust <> 0 THEN
-                IF (method = 1 AND lmust = 0) OR (method = 0 AND lmay = 0) THEN
-                    revertmaymusthaven = revertmaymusthaven + 1
-                    revertmaymusthave(revertmaymusthaven) = currentid
-                    SWAP ids(currentid).musthave, ids(currentid).mayhave
+                    'get next variable name
+                    n$ = getelement$(ca$, i): i = i + 1
+                    GOTO subfuncshr2
                 END IF
             END IF
 
@@ -7157,8 +7430,9 @@ DO
             IF getelement$(a$, i) = "," THEN i = i + 1: l$ = l$ + sp2 + ",": GOTO subfuncshr
             IF getelement$(a$, i) <> "" THEN a$ = "Expected ,": GOTO errmes
 
-            layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
-            GOTO finishedline
+                layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
+                GOTO finishedline
+            END IF
         END IF
     END IF
 
@@ -7170,10 +7444,11 @@ DO
             IF secondelement$ = "SUB" THEN sf = 2
             IF sf THEN
 
-                IF LEN(subfunc) = 0 THEN a$ = "EXIT " + secondelement$ + " must be used within a SUB/FUNCTION": GOTO errmes
+                IF LEN(subfunc) = 0 THEN a$ = "EXIT " + secondelement$ + " must be used within a " + secondelement$: GOTO errmes
 
                 PrintToBuffer 12, "goto exit_subfunc;", 0
-                l$ = firstelement$ + sp + secondelement$
+                IF LEFT$(subfunc, 4) = "SUB_" THEN secondelement$ = SCase$("Sub") ELSE secondelement$ = SCase$("Function")
+                l$ = SCase$("Exit") + sp + secondelement$
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 GOTO finishedline
             END IF
@@ -7247,7 +7522,7 @@ DO
             'validate stringvariable$
             stringvariable$ = fixoperationorder$(stringvariable$)
             IF Error_Happened THEN GOTO errmes
-            l$ = "ASC" + sp2 + "(" + sp2 + tlayout$
+            l$ = SCase$("Asc") + sp2 + "(" + sp2 + tlayout$
 
             e$ = evaluate(stringvariable$, sourcetyp)
             IF Error_Happened THEN GOTO errmes
@@ -7342,7 +7617,7 @@ DO
             'check if it is a valid source string
             stringvariable$ = fixoperationorder$(stringvariable$)
             IF Error_Happened THEN GOTO errmes
-            l$ = "MID$" + sp2 + "(" + sp2 + tlayout$
+            l$ = SCase$("Mid$") + sp2 + "(" + sp2 + tlayout$
             e$ = evaluate(stringvariable$, sourcetyp)
             IF Error_Happened THEN GOTO errmes
             IF (sourcetyp AND ISREFERENCE) = 0 OR (sourcetyp AND ISSTRING) = 0 THEN a$ = "MID$ expects a string variable/array-element as its first argument": GOTO errmes
@@ -7381,7 +7656,7 @@ DO
     IF n >= 2 THEN
         IF firstelement$ = "ERASE" THEN
             i = 2
-            l$ = "ERASE"
+            l$ = SCase$("Erase")
             erasenextarray:
             var$ = getelement$(ca$, i)
             x$ = var$: ls$ = removesymbol(x$)
@@ -7483,25 +7758,29 @@ DO
     'DIM/REDIM/STATIC
     IF n >= 2 THEN
         dimoption = 0: redimoption = 0: commonoption = 0
-        IF firstelement$ = "DIM" THEN dimoption = 1
+        IF firstelement$ = "DIM" THEN l$ = SCase$("Dim"): dimoption = 1
         IF firstelement$ = "REDIM" THEN
+            l$ = SCase$("ReDim")
             dimoption = 2: redimoption = 1
             IF secondelement$ = "_PRESERVE" OR (secondelement$ = "PRESERVE" AND qb64prefix_set = 1) THEN
                 redimoption = 2
+                IF secondelement$ = "_PRESERVE" THEN
+                    l$ = l$ + sp + SCase$("_Preserve")
+                ELSE
+                    l$ = l$ + sp + SCase$("Preserve")
+                END IF
                 IF n = 2 THEN a$ = "Expected REDIM " + qb64prefix$ + "PRESERVE ...": GOTO errmes
             END IF
         END IF
-        IF firstelement$ = "STATIC" THEN dimoption = 3
-        IF firstelement$ = "COMMON" THEN dimoption = 1: commonoption = 1
+        IF firstelement$ = "STATIC" THEN l$ = SCase$("Static"): dimoption = 3
+        IF firstelement$ = "COMMON" THEN l$ = SCase$("Common"): dimoption = 1: commonoption = 1
         IF dimoption THEN
-
-            l$ = firstelement$
 
             IF dimoption = 3 AND subfuncn = 0 THEN a$ = "STATIC must be used within a SUB/FUNCTION": GOTO errmes
             IF commonoption = 1 AND subfuncn <> 0 THEN a$ = "COMMON cannot be used within a SUB/FUNCTION": GOTO errmes
 
             i = 2
-            IF redimoption = 2 THEN i = 3: l$ = l$ + sp + secondelement$
+            IF redimoption = 2 THEN i = 3
 
             IF dimoption <> 3 THEN 'shared cannot be static
                 a2$ = getelement(a$, i)
@@ -7509,366 +7788,371 @@ DO
                     IF subfuncn <> 0 THEN a$ = "DIM/REDIM SHARED invalid within a SUB/FUNCTION": GOTO errmes
                     dimshared = 1
                     i = i + 1
-                    l$ = l$ + sp + a2$
+                    l$ = l$ + sp + SCase$("Shared")
                 END IF
             END IF
 
             IF dimoption = 3 THEN dimstatic = 1: AllowLocalName = 1
 
-            dimnext:
-            notype = 0
-            listarray = 0
+            'look for new dim syntax: DIM AS variabletype var1, var2, etc....
+            e$ = getelement$(a$, i)
+            IF e$ <> "AS" THEN
+                'no "AS", so this is the traditional dim syntax
+                dimnext:
+                notype = 0
+                listarray = 0
 
 
-            'old chain code
-            'chaincommonarray=0
+                'old chain code
+                'chaincommonarray=0
 
-            varname$ = getelement(ca$, i): i = i + 1
-            IF varname$ = "" THEN a$ = "Expected variable-name": GOTO errmes
+                varname$ = getelement(ca$, i): i = i + 1
+                IF varname$ = "" THEN a$ = "Expected " + firstelement$ + " variable-name or " + firstelement$ + " AS type variable-list": GOTO errmes
 
-            'get the next element
-            IF i >= n + 1 THEN e$ = "" ELSE e$ = getelement(a$, i): i = i + 1
-
-            'check if next element is a ( to create an array
-            elements$ = ""
-
-            IF e$ = "(" THEN
-                B = 1
-                FOR i = i TO n
-                    e$ = getelement(ca$, i)
-                    IF e$ = "(" THEN B = B + 1
-                    IF e$ = ")" THEN B = B - 1
-                    IF B = 0 THEN EXIT FOR
-                    IF LEN(elements$) THEN elements$ = elements$ + sp + e$ ELSE elements$ = e$
-                NEXT
-                IF B <> 0 THEN a$ = "Expected )": GOTO errmes
-                i = i + 1 'set i to point to the next element
-
-                IF commonoption THEN elements$ = "?"
-
-
-                IF Debug THEN PRINT #9, "DIM2:array:elements$:[" + elements$ + "]"
-
-                'arrayname() means list array to it will automatically be static when it is formally dimensioned later
-                'note: listed arrays are always created in dynamic memory, but their contents are not erased
-                '      this differs from static arrays from SUB...STATIC and the unique QB64 method -> STATIC arrayname(100)
-                IF dimoption = 3 THEN 'STATIC used
-                    IF LEN(elements$) = 0 THEN 'nothing between brackets
-                        listarray = 1 'add to static list
-                    END IF
-                END IF
-
-                'last element was ")"
-                'get next element
+                'get the next element
                 IF i >= n + 1 THEN e$ = "" ELSE e$ = getelement(a$, i): i = i + 1
-            END IF 'e$="("
-            d$ = e$
 
-            dimmethod = 0
+                'check if next element is a ( to create an array
+                elements$ = ""
 
-            appendname$ = "" 'the symbol to append to name returned by dim2
-            appendtype$ = "" 'eg. sp+AS+spINTEGER
-            dim2typepassback$ = ""
+                IF e$ = "(" THEN
+                    B = 1
+                    FOR i = i TO n
+                        e$ = getelement(ca$, i)
+                        IF e$ = "(" THEN B = B + 1
+                        IF e$ = ")" THEN B = B - 1
+                        IF B = 0 THEN EXIT FOR
+                        IF LEN(elements$) THEN elements$ = elements$ + sp + e$ ELSE elements$ = e$
+                    NEXT
+                    IF B <> 0 THEN a$ = "Expected )": GOTO errmes
+                    i = i + 1 'set i to point to the next element
 
-            'does varname have an appended symbol?
-            s$ = removesymbol$(varname$)
-            IF Error_Happened THEN GOTO errmes
-            IF validname(varname$) = 0 THEN a$ = "Invalid variable name": GOTO errmes
+                    IF commonoption THEN elements$ = "?"
 
-            IF s$ <> "" THEN
-                typ$ = s$
-                dimmethod = 1
-                appendname$ = typ$
-                GOTO dimgottyp
-            END IF
 
-            IF d$ = "AS" THEN
-                appendtype$ = sp + "AS"
-                typ$ = ""
-                FOR i = i TO n
-                    d$ = getelement(a$, i)
-                    IF d$ = "," THEN i = i + 1: EXIT FOR
-                    typ$ = typ$ + d$ + " "
-                    appendtype$ = appendtype$ + sp + d$
-                    d$ = ""
-                NEXT
-                appendtype$ = UCASE$(appendtype$) 'capitalise default types (udt override this later if necessary)
-                typ$ = RTRIM$(typ$)
-                GOTO dimgottyp
-            END IF
+                    IF Debug THEN PRINT #9, "DIM2:array:elements$:[" + elements$ + "]"
 
-            'auto-define type based on name
-            notype = 1
-            IF LEFT$(varname$, 1) = "_" THEN v = 27 ELSE v = ASC(UCASE$(varname$)) - 64
-            typ$ = defineaz(v)
-            dimmethod = 1
-            GOTO dimgottyp
-
-            dimgottyp:
-            IF d$ <> "" AND d$ <> "," THEN a$ = "DIM: Expected comma!": GOTO errmes
-
-            'In QBASIC, if no type info is given it can refer to an expeicit/formally defined array
-            IF notype <> 0 AND dimoption <> 3 AND dimoption <> 1 THEN 'not DIM or STATIC which only create new content
-                IF LEN(elements$) THEN 'an array
-                    IF FindArray(varname$) THEN
-                        IF LEN(RTRIM$(id.mayhave)) THEN 'explict/formally defined
-                            typ$ = id2fulltypename$ 'adopt type
-                            dimmethod = 0 'set as formally defined
+                    'arrayname() means list array to it will automatically be static when it is formally dimensioned later
+                    'note: listed arrays are always created in dynamic memory, but their contents are not erased
+                    '      this differs from static arrays from SUB...STATIC and the unique QB64 method -> STATIC arrayname(100)
+                    IF dimoption = 3 THEN 'STATIC used
+                        IF LEN(elements$) = 0 THEN 'nothing between brackets
+                            listarray = 1 'add to static list
                         END IF
                     END IF
-                END IF
-            END IF
 
-            IF dimoption = 3 AND LEN(elements$) THEN 'eg. STATIC a(100)
-                'does a conflicting array exist? (use findarray) if so again this should lead to duplicate definition
-                typ2$ = symbol2fulltypename$(typ$)
-                t = typname2typ(typ2$): ts = typname2typsize
-                'try name without any extension
-                IF FindArray(varname$) THEN 'name without any symbol
-                    IF id.insubfuncn = subfuncn THEN 'global cannot conflict with static
-                        IF LEN(RTRIM$(id.musthave)) THEN
-                            'if types match then fail
-                            IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
-                                IF ts = id.tsize THEN
-                                    a$ = "Name already in use": GOTO errmes
-                                END IF
-                            END IF
-                        ELSE
-                            IF dimmethod = 0 THEN
-                                a$ = "Name already in use": GOTO errmes 'explicit over explicit
-                            ELSE
-                                'if types match then fail
-                                IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
-                                    IF ts = id.tsize THEN
-                                        a$ = "Name already in use": GOTO errmes
-                                    END IF
-                                END IF
-                            END IF
-                        END IF
-                    END IF
-                END IF
-                'add extension (if possible)
-                IF (t AND ISUDT) = 0 THEN
-                    s2$ = type2symbol$(typ2$)
-                    IF Error_Happened THEN GOTO errmes
-                    IF FindArray(varname$ + s2$) THEN
-                        IF id.insubfuncn = subfuncn THEN 'global cannot conflict with static
-                            IF LEN(RTRIM$(id.musthave)) THEN
-                                'if types match then fail
-                                IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
-                                    IF ts = id.tsize THEN
-                                        a$ = "Name already in use": GOTO errmes
-                                    END IF
-                                END IF
-                            ELSE
-                                IF dimmethod = 0 THEN
-                                    a$ = "Name already in use": GOTO errmes 'explicit over explicit
-                                ELSE
-                                    'if types match then fail
-                                    IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
-                                        IF ts = id.tsize THEN
-                                            a$ = "Name already in use": GOTO errmes
-                                        END IF
-                                    END IF
-                                END IF
-                            END IF
-                        END IF
-                    END IF
-                END IF 'not a UDT
-            END IF
+                    'last element was ")"
+                    'get next element
+                    IF i >= n + 1 THEN e$ = "" ELSE e$ = getelement(a$, i): i = i + 1
+                END IF 'e$="("
+                d$ = e$
 
-            IF listarray THEN 'eg. STATIC a()
-                'note: list is cleared by END SUB/FUNCTION
+                dimmethod = 0
 
-                'is a conflicting array already listed? if so this should cause a duplicate definition error
-                'check for conflict within list:
-                xi = 1
-                FOR x = 1 TO staticarraylistn
-                    varname2$ = getelement$(staticarraylist, xi): xi = xi + 1
-                    typ2$ = getelement$(staticarraylist, xi): xi = xi + 1
-                    dimmethod2 = VAL(getelement$(staticarraylist, xi)): xi = xi + 1
-                    'check if they are similar
-                    IF UCASE$(varname$) = UCASE$(varname2$) THEN
-                        IF dimmethod2 = 1 THEN
-                            'old using symbol
-                            IF symbol2fulltypename$(typ$) = typ2$ THEN a$ = "Name already in use": GOTO errmes
-                        ELSE
-                            'old using AS
-                            IF dimmethod = 0 THEN
-                                a$ = "Name already in use": GOTO errmes
-                            ELSE
-                                IF symbol2fulltypename$(typ$) = typ2$ THEN a$ = "Name already in use": GOTO errmes
-                            END IF
-                        END IF
-                    END IF
-                NEXT
+                appendname$ = "" 'the symbol to append to name returned by dim2
+                appendtype$ = "" 'eg. sp+AS+spINTEGER
+                dim2typepassback$ = ""
 
-                'does a conflicting array exist? (use findarray) if so again this should lead to duplicate definition
-                typ2$ = symbol2fulltypename$(typ$)
-                t = typname2typ(typ2$): ts = typname2typsize
-                'try name without any extension
-                IF FindArray(varname$) THEN 'name without any symbol
-                    IF id.insubfuncn = subfuncn THEN 'global cannot conflict with static
-                        IF LEN(RTRIM$(id.musthave)) THEN
-                            'if types match then fail
-                            IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
-                                IF ts = id.tsize THEN
-                                    a$ = "Name already in use": GOTO errmes
-                                END IF
-                            END IF
-                        ELSE
-                            IF dimmethod = 0 THEN
-                                a$ = "Name already in use": GOTO errmes 'explicit over explicit
-                            ELSE
-                                'if types match then fail
-                                IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
-                                    IF ts = id.tsize THEN
-                                        a$ = "Name already in use": GOTO errmes
-                                    END IF
-                                END IF
-                            END IF
-                        END IF
-                    END IF
-                END IF
-                'add extension (if possible)
-                IF (t AND ISUDT) = 0 THEN
-                    s2$ = type2symbol$(typ2$)
-                    IF Error_Happened THEN GOTO errmes
-                    IF FindArray(varname$ + s2$) THEN
-                        IF id.insubfuncn = subfuncn THEN 'global cannot conflict with static
-                            IF LEN(RTRIM$(id.musthave)) THEN
-                                'if types match then fail
-                                IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
-                                    IF ts = id.tsize THEN
-                                        a$ = "Name already in use": GOTO errmes
-                                    END IF
-                                END IF
-                            ELSE
-                                IF dimmethod = 0 THEN
-                                    a$ = "Name already in use": GOTO errmes 'explicit over explicit
-                                ELSE
-                                    'if types match then fail
-                                    IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
-                                        IF ts = id.tsize THEN
-                                            a$ = "Name already in use": GOTO errmes
-                                        END IF
-                                    END IF
-                                END IF
-                            END IF
-                        END IF
-                    END IF
-                END IF 'not a UDT
-
-                'note: static list arrays cannot be created until they are formally [or informally] (RE)DIM'd later
-                IF LEN(staticarraylist) THEN staticarraylist = staticarraylist + sp
-                staticarraylist = staticarraylist + varname$ + sp + symbol2fulltypename$(typ$) + sp + str2(dimmethod)
+                'does varname have an appended symbol?
+                s$ = removesymbol$(varname$)
                 IF Error_Happened THEN GOTO errmes
-                staticarraylistn = staticarraylistn + 1
-                l$ = l$ + sp + varname$ + appendname$ + sp2 + "(" + sp2 + ")" + appendtype$
-                'note: none of the following code is run, dim2 call is also skipped
+                IF validname(varname$) = 0 THEN a$ = "Invalid variable name": GOTO errmes
 
-            ELSE
+                IF s$ <> "" THEN
+                    typ$ = s$
+                    dimmethod = 1
+                    appendname$ = typ$
+                    GOTO dimgottyp
+                END IF
 
-                olddimstatic = dimstatic
+                IF d$ = "AS" THEN
+                    appendtype$ = sp + SCase$("As")
+                    typ$ = ""
+                    FOR i = i TO n
+                        d$ = getelement(a$, i)
+                        IF d$ = "," THEN i = i + 1: EXIT FOR
+                        typ$ = typ$ + d$ + " "
+                        appendtype$ = appendtype$ + sp + d$
+                        d$ = ""
+                    NEXT
+                    appendtype$ = SCase2$(appendtype$) 'capitalise default types (udt override this later if necessary)
+                    typ$ = RTRIM$(typ$)
+                    GOTO dimgottyp
+                END IF
 
-                'check if varname is on the static list
-                IF LEN(elements$) THEN 'it's an array
-                    IF subfuncn THEN 'it's in a sub/function
-                        xi = 1
-                        FOR x = 1 TO staticarraylistn
-                            varname2$ = getelement$(staticarraylist, xi): xi = xi + 1
-                            typ2$ = getelement$(staticarraylist, xi): xi = xi + 1
-                            dimmethod2 = VAL(getelement$(staticarraylist, xi)): xi = xi + 1
-                            'check if they are similar
-                            IF UCASE$(varname$) = UCASE$(varname2$) THEN
-                                IF symbol2fulltypename$(typ$) = typ2$ THEN
-                                    IF Error_Happened THEN GOTO errmes
-                                    IF dimmethod = dimmethod2 THEN
-                                        'match found!
-                                        varname$ = varname2$
-                                        dimstatic = 3
-                                        IF dimoption = 3 THEN a$ = "Array already listed as STATIC": GOTO errmes
-                                    END IF
-                                END IF 'typ
-                            END IF 'varname
-                        NEXT
+                'auto-define type based on name
+                notype = 1
+                IF LEFT$(varname$, 1) = "_" THEN v = 27 ELSE v = ASC(UCASE$(varname$)) - 64
+                typ$ = defineaz(v)
+                dimmethod = 1
+                GOTO dimgottyp
+
+                dimgottyp:
+                IF d$ <> "" AND d$ <> "," THEN a$ = "DIM: Expected comma!": GOTO errmes
+
+                'In QBASIC, if no type info is given it can refer to an expeicit/formally defined array
+                IF notype <> 0 AND dimoption <> 3 AND dimoption <> 1 THEN 'not DIM or STATIC which only create new content
+                    IF LEN(elements$) THEN 'an array
+                        IF FindArray(varname$) THEN
+                            IF LEN(RTRIM$(id.mayhave)) THEN 'explict/formally defined
+                                typ$ = id2fulltypename$ 'adopt type
+                                dimmethod = 0 'set as formally defined
+                            END IF
+                        END IF
                     END IF
                 END IF
 
-                'COMMON exception
-                'note: COMMON alone does not imply SHARED
-                '      if either(or both) COMMON & later DIM have SHARED, variable becomes shared
-                IF commonoption THEN
-                    IF LEN(elements$) THEN
-
-                        'add array to list
-                        IF LEN(commonarraylist) THEN commonarraylist = commonarraylist + sp
-                        'note: dimmethod distinguishes between a%(...) vs a(...) AS INTEGER
-                        commonarraylist = commonarraylist + varname$ + sp + symbol2fulltypename$(typ$) + sp + str2(dimmethod) + sp + str2(dimshared)
-                        IF Error_Happened THEN GOTO errmes
-                        commonarraylistn = commonarraylistn + 1
-                        IF Debug THEN PRINT #9, "common listed:" + varname$ + sp + symbol2fulltypename$(typ$) + sp + str2(dimmethod) + sp + str2(dimshared)
-                        IF Error_Happened THEN GOTO errmes
-
-                        x = 0
-
-                        v$ = varname$
-                        IF dimmethod = 1 THEN v$ = v$ + typ$
-                        try = findid(v$)
-                        IF Error_Happened THEN GOTO errmes
-                        DO WHILE try
-                            IF id.arraytype THEN
-
-                                t = typname2typ(typ$)
-                                IF Error_Happened THEN GOTO errmes
-                                s = typname2typsize
-                                match = 1
-                                'note: dimmethod 2 is already matched
-                                IF dimmethod = 0 THEN
-                                    t2 = id.arraytype
-                                    s2 = id.tsize
-                                    IF (t AND ISFLOAT) <> (t2 AND ISFLOAT) THEN match = 0
-                                    IF (t AND ISUNSIGNED) <> (t2 AND ISUNSIGNED) THEN match = 0
-                                    IF (t AND ISSTRING) <> (t2 AND ISSTRING) THEN match = 0
-                                    IF (t AND ISFIXEDLENGTH) <> (t2 AND ISFIXEDLENGTH) THEN match = 0
-                                    IF (t AND ISOFFSETINBITS) <> (t2 AND ISOFFSETINBITS) THEN match = 0
-                                    IF (t AND ISUDT) <> (t2 AND ISUDT) THEN match = 0
-                                    IF (t AND 511) <> (t2 AND 511) THEN match = 0
-                                    IF s <> s2 THEN match = 0
-                                    'check for implicit/explicit declaration match
-                                    oldmethod = 0: IF LEN(RTRIM$(id.musthave)) THEN oldmethod = 1
-                                    IF oldmethod <> dimmethod THEN match = 0
+                NormalDimBlock:
+                IF dimoption = 3 AND LEN(elements$) THEN 'eg. STATIC a(100)
+                    'does a conflicting array exist? (use findarray) if so again this should lead to duplicate definition
+                    typ2$ = symbol2fulltypename$(typ$)
+                    t = typname2typ(typ2$): ts = typname2typsize
+                    'try name without any extension
+                    IF FindArray(varname$) THEN 'name without any symbol
+                        IF id.insubfuncn = subfuncn THEN 'global cannot conflict with static
+                            IF LEN(RTRIM$(id.musthave)) THEN
+                                'if types match then fail
+                                IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
+                                    IF ts = id.tsize THEN
+                                        a$ = "Name already in use": GOTO errmes
+                                    END IF
                                 END IF
-
-                                IF match THEN
-                                    x = currentid
-                                    IF dimshared THEN ids(x).share = 1 'share if necessary
-                                    tlayout$ = RTRIM$(id.cn) + sp + "(" + sp2 + ")"
-
-                                    IF dimmethod = 0 THEN
-                                        IF t AND ISUDT THEN
-                                            dim2typepassback$ = RTRIM$(udtxcname(t AND 511))
-                                            IF UCASE$(typ$) = "MEM" AND qb64prefix_set = 1 AND RTRIM$(udtxcname(t AND 511)) = "_MEM" THEN
-                                                dim2typepassback$ = MID$(RTRIM$(udtxcname(t AND 511)), 2)
-                                            END IF
-                                        ELSE
-                                            dim2typepassback$ = typ$
-                                            DO WHILE INSTR(dim2typepassback$, " ")
-                                                ASC(dim2typepassback$, INSTR(dim2typepassback$, " ")) = ASC(sp)
-                                            LOOP
-                                            dim2typepassback$ = UCASE$(dim2typepassback$)
+                            ELSE
+                                IF dimmethod = 0 THEN
+                                    a$ = "Name already in use": GOTO errmes 'explicit over explicit
+                                ELSE
+                                    'if types match then fail
+                                    IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
+                                        IF ts = id.tsize THEN
+                                            a$ = "Name already in use": GOTO errmes
                                         END IF
-                                    END IF 'method 0
+                                    END IF
+                                END IF
+                            END IF
+                        END IF
+                    END IF
+                    'add extension (if possible)
+                    IF (t AND ISUDT) = 0 THEN
+                        s2$ = type2symbol$(typ2$)
+                        IF Error_Happened THEN GOTO errmes
+                        IF FindArray(varname$ + s2$) THEN
+                            IF id.insubfuncn = subfuncn THEN 'global cannot conflict with static
+                                IF LEN(RTRIM$(id.musthave)) THEN
+                                    'if types match then fail
+                                    IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
+                                        IF ts = id.tsize THEN
+                                            a$ = "Name already in use": GOTO errmes
+                                        END IF
+                                    END IF
+                                ELSE
+                                    IF dimmethod = 0 THEN
+                                        a$ = "Name already in use": GOTO errmes 'explicit over explicit
+                                    ELSE
+                                        'if types match then fail
+                                        IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
+                                            IF ts = id.tsize THEN
+                                                a$ = "Name already in use": GOTO errmes
+                                            END IF
+                                        END IF
+                                    END IF
+                                END IF
+                            END IF
+                        END IF
+                    END IF 'not a UDT
+                END IF
 
-                                    EXIT DO
-                                END IF 'match
+                IF listarray THEN 'eg. STATIC a()
+                    'note: list is cleared by END SUB/FUNCTION
 
-                            END IF 'arraytype
-                            IF try = 2 THEN findanotherid = 1: try = findid(v$) ELSE try = 0
+                    'is a conflicting array already listed? if so this should cause a duplicate definition error
+                    'check for conflict within list:
+                    xi = 1
+                    FOR x = 1 TO staticarraylistn
+                        varname2$ = getelement$(staticarraylist, xi): xi = xi + 1
+                        typ2$ = getelement$(staticarraylist, xi): xi = xi + 1
+                        dimmethod2 = VAL(getelement$(staticarraylist, xi)): xi = xi + 1
+                        'check if they are similar
+                        IF UCASE$(varname$) = UCASE$(varname2$) THEN
+                            IF dimmethod2 = 1 THEN
+                                'old using symbol
+                                IF symbol2fulltypename$(typ$) = typ2$ THEN a$ = "Name already in use": GOTO errmes
+                            ELSE
+                                'old using AS
+                                IF dimmethod = 0 THEN
+                                    a$ = "Name already in use": GOTO errmes
+                                ELSE
+                                    IF symbol2fulltypename$(typ$) = typ2$ THEN a$ = "Name already in use": GOTO errmes
+                                END IF
+                            END IF
+                        END IF
+                    NEXT
+
+                    'does a conflicting array exist? (use findarray) if so again this should lead to duplicate definition
+                    typ2$ = symbol2fulltypename$(typ$)
+                    t = typname2typ(typ2$): ts = typname2typsize
+                    'try name without any extension
+                    IF FindArray(varname$) THEN 'name without any symbol
+                        IF id.insubfuncn = subfuncn THEN 'global cannot conflict with static
+                            IF LEN(RTRIM$(id.musthave)) THEN
+                                'if types match then fail
+                                IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
+                                    IF ts = id.tsize THEN
+                                        a$ = "Name already in use": GOTO errmes
+                                    END IF
+                                END IF
+                            ELSE
+                                IF dimmethod = 0 THEN
+                                    a$ = "Name already in use": GOTO errmes 'explicit over explicit
+                                ELSE
+                                    'if types match then fail
+                                    IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
+                                        IF ts = id.tsize THEN
+                                            a$ = "Name already in use": GOTO errmes
+                                        END IF
+                                    END IF
+                                END IF
+                            END IF
+                        END IF
+                    END IF
+                    'add extension (if possible)
+                    IF (t AND ISUDT) = 0 THEN
+                        s2$ = type2symbol$(typ2$)
+                        IF Error_Happened THEN GOTO errmes
+                        IF FindArray(varname$ + s2$) THEN
+                            IF id.insubfuncn = subfuncn THEN 'global cannot conflict with static
+                                IF LEN(RTRIM$(id.musthave)) THEN
+                                    'if types match then fail
+                                    IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
+                                        IF ts = id.tsize THEN
+                                            a$ = "Name already in use": GOTO errmes
+                                        END IF
+                                    END IF
+                                ELSE
+                                    IF dimmethod = 0 THEN
+                                        a$ = "Name already in use": GOTO errmes 'explicit over explicit
+                                    ELSE
+                                        'if types match then fail
+                                        IF (id.arraytype AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) = (t AND (ISFLOAT + ISUDT + 511 + ISUNSIGNED + ISSTRING + ISFIXEDLENGTH)) THEN
+                                            IF ts = id.tsize THEN
+                                                a$ = "Name already in use": GOTO errmes
+                                            END IF
+                                        END IF
+                                    END IF
+                                END IF
+                            END IF
+                        END IF
+                    END IF 'not a UDT
+
+                    'note: static list arrays cannot be created until they are formally [or informally] (RE)DIM'd later
+                    IF LEN(staticarraylist) THEN staticarraylist = staticarraylist + sp
+                    staticarraylist = staticarraylist + varname$ + sp + symbol2fulltypename$(typ$) + sp + str2(dimmethod)
+                    IF Error_Happened THEN GOTO errmes
+                    staticarraylistn = staticarraylistn + 1
+                    l$ = l$ + sp + varname$ + appendname$ + sp2 + "(" + sp2 + ")" + appendtype$
+                    'note: none of the following code is run, dim2 call is also skipped
+
+                ELSE
+
+                    olddimstatic = dimstatic
+
+                    'check if varname is on the static list
+                    IF LEN(elements$) THEN 'it's an array
+                        IF subfuncn THEN 'it's in a sub/function
+                            xi = 1
+                            FOR x = 1 TO staticarraylistn
+                                varname2$ = getelement$(staticarraylist, xi): xi = xi + 1
+                                typ2$ = getelement$(staticarraylist, xi): xi = xi + 1
+                                dimmethod2 = VAL(getelement$(staticarraylist, xi)): xi = xi + 1
+                                'check if they are similar
+                                IF UCASE$(varname$) = UCASE$(varname2$) THEN
+                                    IF symbol2fulltypename$(typ$) = typ2$ THEN
+                                        IF Error_Happened THEN GOTO errmes
+                                        IF dimmethod = dimmethod2 THEN
+                                            'match found!
+                                            varname$ = varname2$
+                                            dimstatic = 3
+                                            IF dimoption = 3 THEN a$ = "Array already listed as STATIC": GOTO errmes
+                                        END IF
+                                    END IF 'typ
+                                END IF 'varname
+                            NEXT
+                        END IF
+                    END IF
+
+                    'COMMON exception
+                    'note: COMMON alone does not imply SHARED
+                    '      if either(or both) COMMON & later DIM have SHARED, variable becomes shared
+                    IF commonoption THEN
+                        IF LEN(elements$) THEN
+
+                            'add array to list
+                            IF LEN(commonarraylist) THEN commonarraylist = commonarraylist + sp
+                            'note: dimmethod distinguishes between a%(...) vs a(...) AS INTEGER
+                            commonarraylist = commonarraylist + varname$ + sp + symbol2fulltypename$(typ$) + sp + str2(dimmethod) + sp + str2(dimshared)
                             IF Error_Happened THEN GOTO errmes
-                        LOOP
+                            commonarraylistn = commonarraylistn + 1
+                            IF Debug THEN PRINT #9, "common listed:" + varname$ + sp + symbol2fulltypename$(typ$) + sp + str2(dimmethod) + sp + str2(dimshared)
+                            IF Error_Happened THEN GOTO errmes
 
-                        IF x = 0 THEN x = idn + 1
+                            x = 0
+
+                            v$ = varname$
+                            IF dimmethod = 1 THEN v$ = v$ + typ$
+                            try = findid(v$)
+                            IF Error_Happened THEN GOTO errmes
+                            DO WHILE try
+                                IF id.arraytype THEN
+
+                                    t = typname2typ(typ$)
+                                    IF Error_Happened THEN GOTO errmes
+                                    s = typname2typsize
+                                    match = 1
+                                    'note: dimmethod 2 is already matched
+                                    IF dimmethod = 0 THEN
+                                        t2 = id.arraytype
+                                        s2 = id.tsize
+                                        IF (t AND ISFLOAT) <> (t2 AND ISFLOAT) THEN match = 0
+                                        IF (t AND ISUNSIGNED) <> (t2 AND ISUNSIGNED) THEN match = 0
+                                        IF (t AND ISSTRING) <> (t2 AND ISSTRING) THEN match = 0
+                                        IF (t AND ISFIXEDLENGTH) <> (t2 AND ISFIXEDLENGTH) THEN match = 0
+                                        IF (t AND ISOFFSETINBITS) <> (t2 AND ISOFFSETINBITS) THEN match = 0
+                                        IF (t AND ISUDT) <> (t2 AND ISUDT) THEN match = 0
+                                        IF (t AND 511) <> (t2 AND 511) THEN match = 0
+                                        IF s <> s2 THEN match = 0
+                                        'check for implicit/explicit declaration match
+                                        oldmethod = 0: IF LEN(RTRIM$(id.musthave)) THEN oldmethod = 1
+                                        IF oldmethod <> dimmethod THEN match = 0
+                                    END IF
+
+                                    IF match THEN
+                                        x = currentid
+                                        IF dimshared THEN ids(x).share = 1 'share if necessary
+                                        tlayout$ = RTRIM$(id.cn) + sp + "(" + sp2 + ")"
+
+                                        IF dimmethod = 0 THEN
+                                            IF t AND ISUDT THEN
+                                                dim2typepassback$ = RTRIM$(udtxcname(t AND 511))
+                                                IF UCASE$(typ$) = "MEM" AND qb64prefix_set = 1 AND RTRIM$(udtxcname(t AND 511)) = "_MEM" THEN
+                                                    dim2typepassback$ = MID$(RTRIM$(udtxcname(t AND 511)), 2)
+                                                END IF
+                                            ELSE
+                                                dim2typepassback$ = typ$
+                                                DO WHILE INSTR(dim2typepassback$, " ")
+                                                    ASC(dim2typepassback$, INSTR(dim2typepassback$, " ")) = ASC(sp)
+                                                LOOP
+                                                dim2typepassback$ = SCase2$(dim2typepassback$)
+                                            END IF
+                                        END IF 'method 0
+
+                                        EXIT DO
+                                    END IF 'match
+
+                                END IF 'arraytype
+                                IF try = 2 THEN findanotherid = 1: try = findid(v$) ELSE try = 0
+                                IF Error_Happened THEN GOTO errmes
+                            LOOP
+
+                            IF x = 0 THEN x = idn + 1
 
                         'note: the following code only adds include directives, everything else is defered
                         OpenBuffer tmpdir$ + "chain.txt", "APPEND", 22
@@ -7885,59 +8169,59 @@ DO
                         'create/clear include file
                         OpenBuffer tmpdir$ + "inpchain" + str2$(x) + ".txt", "OUTPUT", 22: CloseBuffer 22
 
-                        'note: elements$="?"
-                        IF x <> idn + 1 THEN GOTO skipdim 'array already exists
-                        GOTO dimcommonarray
+                            'note: elements$="?"
+                            IF x <> idn + 1 THEN GOTO skipdim 'array already exists
+                            GOTO dimcommonarray
 
+                        END IF
                     END IF
-                END IF
 
-                'is varname on common list?
-                '******
-                IF LEN(elements$) THEN 'it's an array
-                    IF subfuncn = 0 THEN 'not in a sub/function
+                    'is varname on common list?
+                    '******
+                    IF LEN(elements$) THEN 'it's an array
+                        IF subfuncn = 0 THEN 'not in a sub/function
 
-                        IF Debug THEN PRINT #9, "common checking:" + varname$
+                            IF Debug THEN PRINT #9, "common checking:" + varname$
 
-                        xi = 1
-                        FOR x = 1 TO commonarraylistn
-                            varname2$ = getelement$(commonarraylist, xi): xi = xi + 1
-                            typ2$ = getelement$(commonarraylist, xi): xi = xi + 1
-                            dimmethod2 = VAL(getelement$(commonarraylist, xi)): xi = xi + 1
-                            dimshared2 = VAL(getelement$(commonarraylist, xi)): xi = xi + 1
-                            IF Debug THEN PRINT #9, "common checking against:" + varname2$ + sp + typ2$ + sp + str2(dimmethod2) + sp + str2(dimshared2)
-                            'check if they are similar
-                            IF varname$ = varname2$ THEN
-                                IF symbol2fulltypename$(typ$) = typ2$ THEN
-                                    IF Error_Happened THEN GOTO errmes
-                                    IF dimmethod = dimmethod2 THEN
+                            xi = 1
+                            FOR x = 1 TO commonarraylistn
+                                varname2$ = getelement$(commonarraylist, xi): xi = xi + 1
+                                typ2$ = getelement$(commonarraylist, xi): xi = xi + 1
+                                dimmethod2 = VAL(getelement$(commonarraylist, xi)): xi = xi + 1
+                                dimshared2 = VAL(getelement$(commonarraylist, xi)): xi = xi + 1
+                                IF Debug THEN PRINT #9, "common checking against:" + varname2$ + sp + typ2$ + sp + str2(dimmethod2) + sp + str2(dimshared2)
+                                'check if they are similar
+                                IF varname$ = varname2$ THEN
+                                    IF symbol2fulltypename$(typ$) = typ2$ THEN
+                                        IF Error_Happened THEN GOTO errmes
+                                        IF dimmethod = dimmethod2 THEN
 
-                                        'match found!
-                                        'enforce shared status (if necessary)
-                                        IF dimshared2 THEN dimshared = dimshared OR 2 'temp force SHARED
+                                            'match found!
+                                            'enforce shared status (if necessary)
+                                            IF dimshared2 THEN dimshared = dimshared OR 2 'temp force SHARED
 
-                                        'old chain code
-                                        'chaincommonarray=x
+                                            'old chain code
+                                            'chaincommonarray=x
 
-                                    END IF 'method
-                                END IF 'typ
-                            END IF 'varname
-                        NEXT
+                                        END IF 'method
+                                    END IF 'typ
+                                END IF 'varname
+                            NEXT
+                        END IF
                     END IF
-                END IF
 
-                dimcommonarray:
-                retval = dim2(varname$, typ$, dimmethod, elements$)
-                IF Error_Happened THEN GOTO errmes
-                skipdim:
-                IF dimshared >= 2 THEN dimshared = dimshared - 2
+                    dimcommonarray:
+                    retval = dim2(varname$, typ$, dimmethod, elements$)
+                    IF Error_Happened THEN GOTO errmes
+                    skipdim:
+                    IF dimshared >= 2 THEN dimshared = dimshared - 2
 
-                'non-array COMMON variable
-                IF commonoption <> 0 AND LEN(elements$) = 0 THEN
+                    'non-array COMMON variable
+                    IF commonoption <> 0 AND LEN(elements$) = 0 THEN
 
-                    'CHAIN.TXT (save)
+                        'CHAIN.TXT (save)
 
-                    use_global_byte_elements = 1
+                        use_global_byte_elements = 1
 
                     'switch output from main.txt to chain.txt
                     CloseBuffer 12
@@ -7957,26 +8241,25 @@ DO
                             PrintToBuffer 12, "int64val=__STRING_" + RTRIM$(id.n) + "->len*8;", 0
                             bits = 0
                         END IF
-                    END IF
 
                     IF bits THEN
                         PrintToBuffer 12, "int64val=" + str2$(bits) + ";", 0 'size in bits
                     END IF
                     PrintToBuffer 12, "sub_put(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0
 
-                    'put the variable
-                    e$ = RTRIM$(id.n)
+                        'put the variable
+                        e$ = RTRIM$(id.n)
 
-                    IF (t AND ISUDT) = 0 THEN
-                        IF t AND ISFIXEDLENGTH THEN
-                            e$ = e$ + "$" + str2$(id.tsize)
-                        ELSE
-                            e$ = e$ + typevalue2symbol$(t)
-                            IF Error_Happened THEN GOTO errmes
+                        IF (t AND ISUDT) = 0 THEN
+                            IF t AND ISFIXEDLENGTH THEN
+                                e$ = e$ + "$" + str2$(id.tsize)
+                            ELSE
+                                e$ = e$ + typevalue2symbol$(t)
+                                IF Error_Happened THEN GOTO errmes
+                            END IF
                         END IF
-                    END IF
-                    e$ = evaluatetotyp(fixoperationorder$(e$), -4)
-                    IF Error_Happened THEN GOTO errmes
+                        e$ = evaluatetotyp(fixoperationorder$(e$), -4)
+                        IF Error_Happened THEN GOTO errmes
 
                     PrintToBuffer 12, "sub_put(FF,NULL," + e$ + ",0);", 0
 
@@ -7986,7 +8269,7 @@ DO
                     OpenBuffer tmpdir$ + "main.txt", "APPEND", 12
 
 
-                    'INPCHAIN.TXT (load)
+                        'INPCHAIN.TXT (load)
 
                     'switch output from main.txt to chain.txt
                     CloseBuffer 12
@@ -7999,15 +8282,39 @@ DO
                     PrintToBuffer 12, "sub_get(FF,NULL,byte_element((uint64)&int64val,8," + NewByteElement$ + "),0);", 0
                     '***assume correct size***
 
-                    e$ = RTRIM$(id.n)
-                    t = id.t
-                    IF (t AND ISUDT) = 0 THEN
-                        IF t AND ISFIXEDLENGTH THEN
-                            e$ = e$ + "$" + str2$(id.tsize)
-                        ELSE
-                            e$ = e$ + typevalue2symbol$(t)
-                            IF Error_Happened THEN GOTO errmes
+                        e$ = RTRIM$(id.n)
+                        t = id.t
+                        IF (t AND ISUDT) = 0 THEN
+                            IF t AND ISFIXEDLENGTH THEN
+                                e$ = e$ + "$" + str2$(id.tsize)
+                            ELSE
+                                e$ = e$ + typevalue2symbol$(t)
+                                IF Error_Happened THEN GOTO errmes
+                            END IF
                         END IF
+
+                        IF t AND ISSTRING THEN
+                            IF (t AND ISFIXEDLENGTH) = 0 THEN
+                                PRINT #12, "tqbs=qbs_new(int64val>>3,1);"
+                                PRINT #12, "qbs_set(__STRING_" + RTRIM$(id.n) + ",tqbs);"
+                                'now that the string is the correct size, the following GET command will work correctly...
+                            END IF
+                        END IF
+
+                        e$ = evaluatetotyp(fixoperationorder$(e$), -4)
+                        IF Error_Happened THEN GOTO errmes
+                        PRINT #12, "sub_get(FF,NULL," + e$ + ",0);"
+
+                        PRINT #12, "sub_get(FF,NULL,byte_element((uint64)&int32val,4," + NewByteElement$ + "),0);" 'get next command
+                        PRINT #12, "}"
+
+                        tlayout$ = l2$
+                        'revert output to main.txt
+                        CLOSE #12
+                        OPEN tmpdir$ + "main.txt" FOR APPEND AS #12
+
+                        use_global_byte_elements = 0
+
                     END IF
 
                     IF t AND ISSTRING THEN
@@ -8029,42 +8336,153 @@ DO
                     'revert output to main.txt
                     CloseBuffer 12
                     OpenBuffer tmpdir$ + "main.txt", "APPEND", 12
+                    commonarraylisted:
 
-                    use_global_byte_elements = 0
+                    IF LEN(appendtype$) AND newDimSyntax = -1 THEN
+                        IF LEN(dim2typepassback$) THEN appendtype$ = sp + SCase$("As") + sp + dim2typepassback$
+                        IF newDimSyntaxTypePassBack = 0 THEN
+                            newDimSyntaxTypePassBack = -1
+                            l$ = l$ + appendtype$
+                        END IF
+                    END IF
 
+                    n2 = numelements(tlayout$)
+                    l$ = l$ + sp + getelement$(tlayout$, 1) + appendname$
+                    IF n2 > 1 THEN
+                        l$ = l$ + sp2 + getelements$(tlayout$, 2, n2)
+                    END IF
+
+                    IF LEN(appendtype$) AND newDimSyntax = 0 THEN
+                        IF LEN(dim2typepassback$) THEN appendtype$ = sp + SCase$("As") + sp + dim2typepassback$
+                        l$ = l$ + appendtype$
+                    END IF
+
+                    'modify first element name to include symbol
+
+                    dimstatic = olddimstatic
+
+                END IF 'listarray=0
+
+                IF newDimSyntax THEN RETURN
+
+                IF d$ = "," THEN l$ = l$ + sp2 + ",": GOTO dimnext
+
+                dimoption = 0
+                dimshared = 0
+                redimoption = 0
+                IF dimstatic = 1 THEN dimstatic = 0
+                AllowLocalName = 0
+
+                layoutdone = 1
+                IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
+
+                GOTO finishedline
+            ELSE
+                'yes, this is the new dim syntax.
+                i = i + 1 'skip "AS"
+                newDimSyntaxTypePassBack = 0
+
+                'estabilish the data type:
+                appendname$ = ""
+                appendtype$ = sp + SCase$("As")
+                typ$ = ""
+                varname$ = ""
+                previousElement$ = ""
+                FOR i = i TO n
+                    d$ = getelement(a$, i)
+                    IF d$ = "," OR d$ = "(" THEN EXIT FOR
+                    varname$ = getelement(ca$, i)
+                    IF LEN(previousElement$) THEN
+                        typ$ = typ$ + previousElement$ + " "
+                        appendtype$ = appendtype$ + sp + previousElement$
+                    END IF
+                    previousElement$ = d$
+                    d$ = ""
+                NEXT
+                appendtype$ = SCase2$(appendtype$) 'capitalise default types (udt override this later if necessary)
+                typ$ = RTRIM$(typ$)
+
+                dimnext2:
+                notype = 0
+                listarray = 0
+
+                IF typ$ = "" OR varname$ = "" THEN a$ = "Expected " + firstelement$ + " AS type variable-list or " + firstelement$ + " variable-name AS type": GOTO errmes
+
+                'get the next element
+                IF i >= n + 1 THEN e$ = "" ELSE e$ = getelement(a$, i): i = i + 1
+
+                'check if next element is a ( to create an array
+                elements$ = ""
+
+                IF e$ = "(" THEN
+                    B = 1
+                    FOR i = i TO n
+                        e$ = getelement(ca$, i)
+                        IF e$ = "(" THEN B = B + 1
+                        IF e$ = ")" THEN B = B - 1
+                        IF B = 0 THEN EXIT FOR
+                        IF LEN(elements$) THEN elements$ = elements$ + sp + e$ ELSE elements$ = e$
+                    NEXT
+                    IF B <> 0 THEN a$ = "Expected )": GOTO errmes
+                    i = i + 1 'set i to point to the next element
+
+                    IF commonoption THEN elements$ = "?"
+
+
+                    IF Debug THEN PRINT #9, "DIM2:array:elements$:[" + elements$ + "]"
+
+                    'arrayname() means list array to it will automatically be static when it is formally dimensioned later
+                    'note: listed arrays are always created in dynamic memory, but their contents are not erased
+                    '      this differs from static arrays from SUB...STATIC and the unique QB64 method -> STATIC arrayname(100)
+                    IF dimoption = 3 THEN 'STATIC used
+                        IF LEN(elements$) = 0 THEN 'nothing between brackets
+                            listarray = 1 'add to static list
+                        END IF
+                    END IF
+
+                    'last element was ")"
+                    'get next element
+                    IF i >= n + 1 THEN e$ = "" ELSE e$ = getelement(a$, i): i = i + 1
+                END IF 'e$="("
+                d$ = e$
+
+                dimmethod = 0
+
+                dim2typepassback$ = ""
+
+                'does varname have an appended symbol?
+                s$ = removesymbol$(varname$)
+                IF Error_Happened THEN GOTO errmes
+                IF validname(varname$) = 0 THEN a$ = "Invalid variable name": GOTO errmes
+
+                IF s$ <> "" THEN
+                    a$ = "Cannot use type symbol with " + firstelement$ + " AS type variable-list (" + s$ + ")"
+                    GOTO errmes
                 END IF
 
-                commonarraylisted:
+                IF d$ <> "" AND d$ <> "," THEN a$ = "DIM: Expected comma!": GOTO errmes
 
-                n2 = numelements(tlayout$)
-                l$ = l$ + sp + getelement$(tlayout$, 1) + appendname$
-                IF n2 > 1 THEN
-                    l$ = l$ + sp2 + getelements$(tlayout$, 2, n2)
+                newDimSyntax = -1
+                GOSUB NormalDimBlock
+                newDimSyntax = 0
+
+                IF d$ = "," THEN
+                    l$ = l$ + sp2 + ","
+                    varname$ = getelement(ca$, i): i = i + 1
+                    GOTO dimnext2
                 END IF
 
-                IF LEN(appendtype$) THEN
-                    IF LEN(dim2typepassback$) THEN appendtype$ = sp + "AS" + sp + dim2typepassback$
-                    l$ = l$ + appendtype$
-                END IF
+                dimoption = 0
+                dimshared = 0
+                redimoption = 0
+                IF dimstatic = 1 THEN dimstatic = 0
+                AllowLocalName = 0
 
-                'modify first element name to include symbol
+                layoutdone = 1
+                IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
 
-                dimstatic = olddimstatic
-
-            END IF 'listarray=0
-
-            IF d$ = "," THEN l$ = l$ + sp2 + ",": GOTO dimnext
-
-            dimoption = 0
-            dimshared = 0
-            redimoption = 0
-            IF dimstatic = 1 THEN dimstatic = 0
-            AllowLocalName = 0
-
-            layoutdone = 1
-            IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
-
-            GOTO finishedline
+                GOTO finishedline
+            END IF
         END IF
     END IF
 
@@ -8090,7 +8508,7 @@ DO
     'goto
     IF n = 2 THEN
         IF getelement$(a$, 1) = "GOTO" THEN
-            l$ = "GOTO"
+            l$ = SCase$("GoTo")
             a2$ = getelement$(ca$, 2)
             THENGOTO:
             IF validlabel(a2$) = 0 THEN a$ = "Invalid label!": GOTO errmes
@@ -8129,7 +8547,7 @@ DO
 
     IF n = 1 THEN
         IF firstelement$ = "_CONTINUE" OR (firstelement$ = "CONTINUE" AND qb64prefix_set = 1) THEN
-            l$ = UCASE$(firstelement$)
+            IF firstelement$ = "_CONTINUE" THEN l$ = SCase$("_Continue") ELSE l$ = SCase$("Continue")
             'scan backwards until previous control level reached
             FOR i = controllevel TO 1 STEP -1
                 t = controltype(i)
@@ -8152,7 +8570,7 @@ DO
     END IF
 
     IF firstelement$ = "RUN" THEN 'RUN
-        l$ = "RUN"
+        l$ = SCase$("Run")
         IF n = 1 THEN
             'no parameters
             PrintToBuffer 12, "sub_run_init();", 0 'note: called first to free up screen-locked image handles
@@ -8231,7 +8649,7 @@ DO
 
 
     IF firstelement$ = "END" THEN
-        l$ = "END"
+        l$ = SCase$("End")
         IF n > 1 THEN
             e$ = getelements$(ca$, 2, n)
             e$ = fixoperationorder$(e$): IF Error_Happened THEN GOTO errmes
@@ -8254,7 +8672,7 @@ DO
     END IF
 
     IF firstelement$ = "SYSTEM" THEN
-        l$ = "SYSTEM"
+        l$ = SCase$("System")
         IF n > 1 THEN
             e$ = getelements$(ca$, 2, n)
             e$ = fixoperationorder$(e$): IF Error_Happened THEN GOTO errmes
@@ -8282,12 +8700,12 @@ DO
 
     IF n >= 1 THEN
         IF firstelement$ = "STOP" THEN
-            l$ = "STOP"
+            l$ = SCase$("Stop")
             IF n > 1 THEN
                 e$ = getelements$(ca$, 2, n)
                 e$ = fixoperationorder$(e$)
                 IF Error_Happened THEN GOTO errmes
-                l$ = "STOP" + sp + tlayout$
+                l$ = SCase$("Stop") + sp + tlayout$
                 e$ = evaluatetotyp(e$, 64)
                 IF Error_Happened THEN GOTO errmes
                 'note: this value is currently ignored but evaluated for checking reasons
@@ -8312,7 +8730,7 @@ DO
         IF firstelement$ = "RETURN" THEN
             IF n = 1 THEN
                 PrintToBuffer 12, "#include " + CHR$(34) + "ret" + str2$(subfuncn) + ".txt" + CHR$(34), 0
-                l$ = "RETURN"
+                l$ = SCase$("Return")
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 GOTO finishedline
             ELSE
@@ -8351,6 +8769,8 @@ DO
 
                 PrintToBuffer 12, "goto LABEL_" + a2$ + ";", 0
                 l$ = "RETURN" + sp + tlayout$
+                PRINT #12, "goto LABEL_" + a2$ + ";"
+                l$ = SCase$("Return") + sp + tlayout$
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 GOTO finishedline
             END IF
@@ -8359,7 +8779,7 @@ DO
 
     IF n >= 1 THEN
         IF firstelement$ = "RESUME" THEN
-            l$ = "RESUME"
+            l$ = SCase$("Resume")
             IF n = 1 THEN
                 resumeprev:
 
@@ -8376,7 +8796,7 @@ DO
 
                 PrintToBuffer 12, "if (!error_handling){error(20);}else{error_handling=0; error_err=0; return;}", 0
 
-                l$ = l$ + sp + "NEXT"
+                l$ = l$ + sp + SCase$("Next")
                 layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                 GOTO finishedline
             END IF
@@ -8417,7 +8837,7 @@ DO
 
     IF n = 4 THEN
         IF getelements(a$, 1, 3) = "ON" + sp + "ERROR" + sp + "GOTO" THEN
-            l$ = "ON" + sp + "ERROR" + sp + "GOTO"
+            l$ = SCase$("On" + sp + "Error" + sp + "GoTo")
             lbl$ = getelement$(ca$, 4)
             IF lbl$ = "0" THEN
                 PrintToBuffer 12, "error_goto_line=0;", 0
@@ -8467,7 +8887,7 @@ DO
 
     IF n >= 1 THEN
         IF firstelement$ = "RESTORE" THEN
-            l$ = "RESTORE"
+            l$ = SCase$("Restore")
             IF n = 1 THEN
                 PrintToBuffer 12, "data_offset=0;", 0
             ELSE
@@ -8540,7 +8960,7 @@ DO
             var$ = e$
             IF e$ = "" OR ne <> 2 THEN a$ = "Expected " + qb64prefix$ + "MEMGET mem-reference, offset, variable": GOTO errmes
 
-            l$ = UCASE$(firstelement$) + sp
+            IF firstelement$ = "_MEMGET" THEN l$ = SCase$("_MemGet") + sp ELSE l$ = SCase$("MemGet") + sp
 
             e$ = fixoperationorder$(blk$): IF Error_Happened THEN GOTO errmes
             l$ = l$ + tlayout$
@@ -8641,7 +9061,7 @@ DO
             IF ne < 2 OR e$ = "" THEN a$ = "Expected " + qb64prefix$ + "MEMPUT mem-reference, offset, variable|value[AS type]": GOTO errmes
             IF ne = 2 THEN var$ = e$ ELSE typ$ = UCASE$(e$)
 
-            l$ = UCASE$(firstelement$) + sp
+            IF firstelement$ = "_MEMPUT" THEN l$ = SCase$("_MemPut") + sp ELSE l$ = SCase$("MemPut") + sp
 
             e$ = fixoperationorder$(blk$): IF Error_Happened THEN GOTO errmes
             l$ = l$ + tlayout$
@@ -8716,7 +9136,7 @@ DO
                 IF (t AND ISPOINTER) THEN t = t - ISPOINTER
                 'attempt conversion...
                 e$ = fixoperationorder$(var$): IF Error_Happened THEN GOTO errmes
-                l$ = l$ + sp2 + "," + sp + tlayout$ + sp + "AS" + sp + typ$
+                l$ = l$ + sp2 + "," + sp + tlayout$ + sp + SCase$("As") + sp + typ$
                 e$ = evaluatetotyp(e$, t): IF Error_Happened THEN GOTO errmes
                 st$ = typ2ctyp$(t, "")
                 varsize$ = str2((t AND 511) \ 8)
@@ -8778,7 +9198,7 @@ DO
             IF ne < 3 OR e$ = "" THEN a$ = "Expected " + qb64prefix$ + "MEMFILL mem-reference, offset, bytes, variable|value[AS type]": GOTO errmes
             IF ne = 3 THEN var$ = e$ ELSE typ$ = UCASE$(e$)
 
-            l$ = UCASE$(firstelement$) + sp
+            IF firstelement$ = "_MEMFILL" THEN l$ = SCase$("_MemFill") + sp ELSE l$ = SCase$("MemFill") + sp
 
             e$ = fixoperationorder$(blk$): IF Error_Happened THEN GOTO errmes
             l$ = l$ + tlayout$
@@ -8825,7 +9245,7 @@ DO
                 IF (t AND ISPOINTER) THEN t = t - ISPOINTER
                 'attempt conversion...
                 e$ = fixoperationorder$(var$): IF Error_Happened THEN GOTO errmes
-                l$ = l$ + sp2 + "," + sp + tlayout$ + sp + "AS" + sp + typ$
+                l$ = l$ + sp2 + "," + sp + tlayout$ + sp + SCase$("As") + sp + typ$
                 e$ = evaluatetotyp(e$, t): IF Error_Happened THEN GOTO errmes
 
                 c$ = "sub__memfill_"
@@ -8910,7 +9330,7 @@ DO
                         IF argn = 1 THEN 'interrupt number
                             e$ = fixoperationorder$(e$)
                             IF Error_Happened THEN GOTO errmes
-                            l$ = "CALL" + sp + n$ + sp2 + "(" + sp2 + tlayout$
+                            l$ = SCase$("Call") + sp + n$ + sp2 + "(" + sp2 + tlayout$
                             IF cispecial = 1 THEN l$ = n$ + sp + tlayout$
                             e$ = evaluatetotyp(e$, 64&)
                             IF Error_Happened THEN GOTO errmes
@@ -8949,7 +9369,7 @@ DO
 
             'call to CALL ABSOLUTE beyond reasonable doubt
             IF n$ = "ABSOLUTE" THEN
-                l$ = "CALL" + sp + "ABSOLUTE" + sp2 + "(" + sp2
+                l$ = SCase$("Call" + sp + "Absolute" + sp2 + "(" + sp2)
                 argn = 0
                 n = numelements(a$)
                 B = 0
@@ -9145,8 +9565,11 @@ DO
                 IF firstelement$ = "CLOSE" OR firstelement$ = "RESET" THEN
                     IF firstelement$ = "RESET" THEN
                         IF n > 1 THEN a$ = "Syntax error": GOTO errmes
+                        l$ = SCase$("Reset")
+                    ELSE
+                        l$ = SCase$("Close")
                     END IF
-                    l$ = firstelement$
+
                     IF n = 1 THEN
                         PrintToBuffer 12, "sub_close(NULL,0);", 0 'closes all files
                     ELSE
@@ -9273,7 +9696,7 @@ DO
                 IF firstelement$ = "INPUT" THEN 'file input
                     IF n > 1 THEN
                         IF getelement$(a$, 2) = "#" THEN
-                            l$ = "INPUT" + sp + "#": IF lineinput THEN l$ = "LINE" + sp + l$
+                            l$ = SCase$("Input") + sp + "#": IF lineinput THEN l$ = SCase$("Line") + sp + l$
 
                             u$ = str2$(uniquenumber)
                             'which file?
@@ -9370,7 +9793,7 @@ DO
 
 
                 IF firstelement$ = "INPUT" THEN
-                    l$ = "INPUT": IF lineinput THEN l$ = "LINE" + sp + l$
+                    l$ = SCase$("Input"): IF lineinput THEN l$ = SCase$("Line") + sp + l$
                     commaneeded = 0
                     i = 2
 
@@ -9562,7 +9985,7 @@ DO
                 'LSET/RSET
                 IF firstelement$ = "LSET" OR firstelement$ = "RSET" THEN
                     IF n = 1 THEN a$ = "Expected " + firstelement$ + " ...": GOTO errmes
-                    l$ = firstelement$
+                    IF firstelement$ = "LSET" THEN l$ = SCase$("LSet") ELSE l$ = SCase$("RSet")
                     dest$ = ""
                     source$ = ""
                     part = 1
@@ -9641,7 +10064,7 @@ DO
                     IF (e1typ AND ISREFERENCE) = 0 OR (e2typ AND ISREFERENCE) = 0 THEN a$ = "Expected variable": GOTO errmes
 
                     layoutdone = 1
-                    l$ = "SWAP" + sp + e1l$ + sp2 + "," + sp + e2l$
+                    l$ = SCase$("Swap") + sp + e1l$ + sp2 + "," + sp + e2l$
                     IF LEN(layout$) = 0 THEN layout$ = l$ ELSE layout$ = layout$ + sp + l$
 
                     'swap strings?
@@ -9731,7 +10154,7 @@ DO
                             l$ = getelement$(a$, 3)
                             IF l$ <> "0" AND l$ <> "1" THEN a$ = "Expected OPTION BASE 0 or 1": GOTO errmes
                             IF l$ = "1" THEN optionbase = 1 ELSE optionbase = 0
-                            l$ = "OPTION" + sp + "BASE" + sp + l$
+                            l$ = SCase$("Option" + sp + "Base") + sp + l$
                             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                             GOTO finishedline
                         CASE "EXPLICIT", "_EXPLICIT"
@@ -9744,7 +10167,8 @@ DO
                             IF LEN(layout$) THEN a$ = "OPTION " + qb64prefix$ + "EXPLICIT must come before any other statement": GOTO errmes
                             IF linenumber > 1 AND opex_comments = 0 THEN a$ = "OPTION " + qb64prefix$ + "EXPLICIT must come before any other statement": GOTO errmes
                             optionexplicit = -1
-                            l$ = "OPTION" + sp + e$
+                            l$ = SCase$("Option") + sp
+                            IF e$ = "EXPLICIT" THEN l$ = l$ + SCase$("Explicit") ELSE l$ = l$ + SCase$("_Explicit")
                             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                             GOTO finishedline
                         CASE "EXPLICITARRAY", "_EXPLICITARRAY"
@@ -9757,7 +10181,8 @@ DO
                             IF LEN(layout$) THEN a$ = "OPTION " + qb64prefix$ + "EXPLICITARRAY must come before any other statement": GOTO errmes
                             IF linenumber > 1 AND opex_comments = 0 THEN a$ = "OPTION " + qb64prefix$ + "EXPLICITARRAY must come before any other statement": GOTO errmes
                             optionexplicitarray = -1
-                            l$ = "OPTION" + sp + e$
+                            l$ = SCase$("Option") + sp
+                            IF e$ = "EXPLICITARRAY" THEN l$ = l$ + SCase$("ExplicitArray") ELSE l$ = l$ + SCase$("_ExplicitArray")
                             layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
                             GOTO finishedline
                         CASE ELSE
@@ -9808,10 +10233,19 @@ DO
                 '       it has one extra index which is the arg after
 
                 IF usecall THEN
-                    IF usecall = 1 THEN l$ = "CALL" + sp + RTRIM$(id.cn) + RTRIM$(id.musthave) + sp2 + "(" + sp2
-                    IF usecall = 2 THEN l$ = "CALL" + sp + RTRIM$(id.cn) + RTRIM$(id.musthave) + sp 'sp at end for easy parsing
+                    IF id.internal_subfunc THEN
+                        IF usecall = 1 THEN l$ = SCase$("Call") + sp + SCase$(RTRIM$(id.cn)) + RTRIM$(id.musthave) + sp2 + "(" + sp2
+                        IF usecall = 2 THEN l$ = SCase$("Call") + sp + SCase$(RTRIM$(id.cn)) + RTRIM$(id.musthave) + sp 'sp at end for easy parsing
+                    ELSE
+                        IF usecall = 1 THEN l$ = SCase$("Call") + sp + RTRIM$(id.cn) + RTRIM$(id.musthave) + sp2 + "(" + sp2
+                        IF usecall = 2 THEN l$ = SCase$("Call") + sp + RTRIM$(id.cn) + RTRIM$(id.musthave) + sp 'sp at end for easy parsing
+                    END IF
                 ELSE
-                    l$ = RTRIM$(id.cn) + RTRIM$(id.musthave) + sp
+                    IF id.internal_subfunc THEN
+                        l$ = SCase$(RTRIM$(id.cn)) + RTRIM$(id.musthave) + sp
+                    ELSE
+                        l$ = RTRIM$(id.cn) + RTRIM$(id.musthave) + sp
+                    END IF
                 END IF
 
                 subcall$ = RTRIM$(id.callname) + "("
@@ -10416,7 +10850,7 @@ DO
                         IF x2$ = "," THEN x2$ = x2$ + sp: GOTO customlaychar2
 
                         IF x$ = CHR$(0) THEN 'substitution
-                            IF x2$ = "STEP" THEN x2$ = x2$ + sp2: GOTO customlaychar2
+                            IF x2$ = "STEP" THEN x2$ = SCase$("Step") + sp2: GOTO customlaychar2
                             x2$ = x2$ + sp: GOTO customlaychar2
                         END IF
 
@@ -10480,7 +10914,7 @@ DO
             IF n = 1 THEN a$ = "Syntax error": GOTO errmes
             ca$ = RIGHT$(ca$, LEN(ca$) - 4)
             n = n - 1
-            l$ = "LET"
+            l$ = SCase$("Let")
             IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
             'note: layoutdone=1 will be set later
             GOTO letused
@@ -10960,7 +11394,7 @@ FOR r = 1 TO nLabels
             END IF
         END IF
 
-        linenumber = Labels(r).Error_Line: a$ = "Label not defined": GOTO errmes
+        linenumber = Labels(r).Error_Line: a$ = "Label '" + RTRIM$(Labels(r).cn) + "' not defined": GOTO errmes
     END IF
 
 
@@ -12481,6 +12915,7 @@ IF Debug THEN 'A more in-your-face error handler
     PRINT "A QB error has occurred (and you have compiled in debugging support)."
     PRINT "Some key information (qb64.bas):"
     PRINT "Error"; ERR
+    PRINT "Description: "; _ERRORMESSAGE$
     PRINT "Line"; _ERRORLINE
     IF _INCLERRORLINE THEN
         PRINT "Included line"; _INCLERRORLINE
@@ -12498,7 +12933,10 @@ IF ideerror THEN 'error happened inside the IDE
     fh = FREEFILE
     OPEN "internal\temp\ideerror.txt" FOR OUTPUT AS #fh
     PRINT #fh, ERR
+    PRINT #fh, _ERRORMESSAGE$
     PRINT #fh, _ERRORLINE
+    PRINT #fh, _INCLERRORLINE
+    PRINT #fh, _INCLERRORFILE$
     CLOSE #fh
     sendc$ = CHR$(255) 'a runtime error has occurred
     RESUME sendcommand 'allow IDE to handle error recovery
@@ -12514,7 +12952,7 @@ IF Debug THEN PRINT #9, "ERL="; ERL
 IF idemode AND qberrorhappenedvalue >= 0 THEN
     'real qb error occurred
     ideerrorline = linenumber
-    idemessage$ = "Compiler error (check for syntax errors) (Reference:"
+    idemessage$ = "Compiler error (check for syntax errors) (" + _ERRORMESSAGE$ + ":"
     IF ERR THEN idemessage$ = idemessage$ + str2$(ERR) + "-"
     IF _ERRORLINE THEN idemessage$ = idemessage$ + str2$(_ERRORLINE)
     IF _INCLERRORLINE THEN idemessage$ = idemessage$ + "-" + _INCLERRORFILE$ + "-" + str2$(_INCLERRORLINE)
@@ -12866,7 +13304,7 @@ FUNCTION allocarray (n2$, elements$, elementsize, udt)
 
             e3base$ = fixoperationorder$(e3base$)
             IF Error_Happened THEN EXIT FUNCTION
-            IF basegiven THEN l$ = l$ + tlayout$ + sp + "TO" + sp
+            IF basegiven THEN l$ = l$ + tlayout$ + sp + SCase$("To") + sp
             e3base$ = evaluatetotyp$(e3base$, 64&)
             IF Error_Happened THEN EXIT FUNCTION
 
@@ -17637,15 +18075,15 @@ FUNCTION findid& (n2$)
     'some subs require a second argument (eg. PUT #, DEF SEG, etc.)
     IF ids(i).subfunc = 2 THEN
         IF ASC(ids(i).secondargmustbe) <> 32 THEN 'exists?
-            IF RTRIM$(secondarg$) = RTRIM$(ids(i).secondargmustbe) THEN
-            ELSEIF qb64prefix_set = 1 AND LEFT$(ids(i).secondargmustbe, 1) = "_" AND LEFT$(secondarg$, 1) <> "_" AND RTRIM$(secondarg$) = MID$(RTRIM$(ids(i).secondargmustbe), 2) THEN
+            IF RTRIM$(secondarg$) = UCASE$(RTRIM$(ids(i).secondargmustbe)) THEN
+            ELSEIF qb64prefix_set = 1 AND LEFT$(ids(i).secondargmustbe, 1) = "_" AND LEFT$(secondarg$, 1) <> "_" AND RTRIM$(secondarg$) = UCASE$(MID$(RTRIM$(ids(i).secondargmustbe), 2)) THEN
             ELSE
                 GOTO findidnomatch
             END IF
         END IF
         IF ASC(ids(i).secondargcantbe) <> 32 THEN 'exists?
-            IF RTRIM$(secondarg$) <> RTRIM$(ids(i).secondargcantbe) THEN
-            ELSEIF qb64prefix_set = 1 AND LEFT$(ids(i).secondargcantbe, 1) = "_" AND LEFT$(secondarg$, 1) <> "_" AND RTRIM$(secondarg$) <> MID$(RTRIM$(ids(i).secondargcantbe), 2) THEN
+            IF RTRIM$(secondarg$) <> UCASE$(RTRIM$(ids(i).secondargcantbe)) THEN
+            ELSEIF qb64prefix_set = 1 AND LEFT$(ids(i).secondargcantbe, 1) = "_" AND LEFT$(secondarg$, 1) <> "_" AND RTRIM$(secondarg$) <> UCASE$(MID$(RTRIM$(ids(i).secondargcantbe), 2)) THEN
             ELSE
                 GOTO findidnomatch
             END IF
@@ -17821,6 +18259,7 @@ FUNCTION FindArray (secure$)
     END IF
     FindArray = 0
 END FUNCTION
+
 
 
 
@@ -18266,8 +18705,8 @@ FUNCTION fixoperationorder$ (savea$)
             IF isoperator(f2$) THEN
                 lastt = 3: lastti = i
                 IF LEN(f2$) > 1 THEN
-                    IF f2$ <> UCASE$(f2$) THEN
-                        f2$ = UCASE$(f2$)
+                    IF f2$ <> SCase2$(f2$) THEN
+                        f2$ = SCase2$(f2$)
                         removeelements a$, i, i, 0
                         insertelements a$, i - 1, f2$
                     END IF
@@ -18276,7 +18715,6 @@ FUNCTION fixoperationorder$ (savea$)
                 IF f2$ = CHR$(241) THEN f$ = f$ + sp + "-": GOTO classdone_special
                 GOTO classdone
             END IF
-
 
             IF alphanumeric(c) THEN
                 lastt = 4: lastti = i
@@ -18469,7 +18907,11 @@ FUNCTION fixoperationorder$ (savea$)
                                     f3$ = f2$
                                     s$ = removesymbol$(f3$)
                                     IF Error_Happened THEN EXIT FUNCTION
-                                    f2$ = RTRIM$(id.cn) + s$
+                                    IF id.internal_subfunc THEN
+                                        f2$ = SCase$(RTRIM$(id.cn)) + s$
+                                    ELSE
+                                        f2$ = RTRIM$(id.cn) + s$
+                                    END IF
                                     removeelements a$, i, i, 0
                                     insertelements a$, i - 1, UCASE$(f2$)
                                     f$ = f$ + f2$ + sp + "(" + sp
@@ -18508,7 +18950,11 @@ FUNCTION fixoperationorder$ (savea$)
                                         'check if next item is a period
 
                                         'correct name
-                                        f2$ = RTRIM$(id.cn) + removesymbol$(f2$)
+                                        IF id.internal_subfunc THEN
+                                            f2$ = SCase$(RTRIM$(id.cn)) + removesymbol$(f2$)
+                                        ELSE
+                                            f2$ = RTRIM$(id.cn) + removesymbol$(f2$)
+                                        END IF
                                         IF Error_Happened THEN EXIT FUNCTION
                                         removeelements a$, i, i, 0
                                         insertelements a$, i - 1, UCASE$(f2$)
@@ -18567,7 +19013,11 @@ FUNCTION fixoperationorder$ (savea$)
                                     f3$ = f2$
                                     s$ = removesymbol$(f3$)
                                     IF Error_Happened THEN EXIT FUNCTION
-                                    f2$ = RTRIM$(id.cn) + s$
+                                    IF id.internal_subfunc THEN
+                                        f2$ = SCase$(RTRIM$(id.cn)) + s$
+                                    ELSE
+                                        f2$ = RTRIM$(id.cn) + s$
+                                    END IF
                                     'change was is returned to uppercase
                                     removeelements a$, i, i, 0
                                     insertelements a$, i - 1, UCASE$(f2$)
@@ -18598,7 +19048,7 @@ FUNCTION fixoperationorder$ (savea$)
                 IF f3$ = "_FLOAT" OR (f3$ = "FLOAT" AND qb64prefix_set = 1) THEN internaltype = 1
                 IF f3$ = "_OFFSET" OR (f3$ = "OFFSET" AND qb64prefix_set = 1) THEN internaltype = 1
                 IF internaltype = 1 THEN
-                    f2$ = f3$
+                    f2$ = SCase2$(f3$)
                     removeelements a$, i, i, 0
                     insertelements a$, i - 1, f3$
                     GOTO classdone
@@ -18613,11 +19063,11 @@ FUNCTION fixoperationorder$ (savea$)
         f$ = f$ + sp
         classdone_special:
     NEXT
+
     IF LEN(f$) THEN f$ = LEFT$(f$, LEN(f$) - 1) 'remove trailing 'sp'
 
     IF Debug THEN PRINT #9, "fixoperationorder:identification:" + a$, n
     IF Debug THEN PRINT #9, "fixoperationorder:identification(layout):" + f$, n
-
 
 
     '----------------I. Pass (){}bracketed items (if any) to fixoperationorder & build return----------------
@@ -19608,7 +20058,7 @@ FUNCTION lineformat$ (a$)
 
                     'note: In QBASIC 'IF cond THEN REM comment' counts as a single line IF statement, however use of ' instead of REM does not
                     IF UCASE$(RIGHT$(a2$, 5)) = sp + "THEN" THEN a2$ = a2$ + sp + "'" 'add nop
-                    layoutcomment = "REM"
+                    layoutcomment = SCase$("Rem")
                     GOTO comment
                 END IF
             END IF
@@ -20040,6 +20490,7 @@ FUNCTION operatorusage (operator$, typ AS LONG, info$, lhs AS LONG, rhs AS LONG,
     IF operator$ = ">=" THEN info$ = ">=": operatorusage = 3: EXIT FUNCTION
 
     lhs = 1: rhs = 1: result = 1
+    operator$ = UCASE$(operator$)
     IF operator$ = "MOD" THEN info$ = "%": operatorusage = 1: EXIT FUNCTION
     IF operator$ = "\" THEN info$ = "/ ": operatorusage = 1: EXIT FUNCTION
     IF operator$ = "IMP" THEN info$ = "|": operatorusage = 4: EXIT FUNCTION
@@ -21024,8 +21475,8 @@ FUNCTION seperateargs (a$, ca$, pass&)
                                         c$ = c$ + " " + getelement$(a$, i3 + w - 1)
                                     NEXT w
                                     'Compare
-                                    noPrefixMatch = LEFT$(Opt(x, o), 1) = "_" AND qb64prefix_set = 1 AND c$ = MID$(RTRIM$(Opt(x, o)), 2)
-                                    IF c$ = RTRIM$(Opt(x, o)) OR noPrefixMatch THEN
+                                    noPrefixMatch = LEFT$(Opt(x, o), 1) = "_" AND qb64prefix_set = 1 AND c$ = UCASE$(MID$(RTRIM$(Opt(x, o)), 2))
+                                    IF c$ = UCASE$(RTRIM$(Opt(x, o))) OR noPrefixMatch THEN
                                         'Record Match
                                         IF i3 < position THEN
                                             position = i3
@@ -21073,7 +21524,7 @@ FUNCTION seperateargs (a$, ca$, pass&)
                         END IF
                     END IF 'Expression
                     i = i + OptWords(x, which)
-                    separgslayout(x) = CHR$(LEN(RTRIM$(Opt(x, which))) - removePrefix) + MID$(RTRIM$(Opt(x, which)), removePrefix + 1)
+                    separgslayout(x) = CHR$(LEN(RTRIM$(Opt(x, which))) - removePrefix) + SCase$(MID$(RTRIM$(Opt(x, which)), removePrefix + 1))
                     separgs(x) = CHR$(0) + str2(which)
                 ELSE
                     'Not Found...
@@ -21976,7 +22427,7 @@ SUB xfileprint (a$, ca$, n)
     printgotfn:
     e$ = fixoperationorder$(a3$)
     IF Error_Happened THEN EXIT SUB
-    l$ = "PRINT" + sp + "#" + sp2 + tlayout$ + sp2 + ","
+    l$ = SCase$("Print") + sp + "#" + sp2 + tlayout$ + sp2 + ","
     e$ = evaluatetotyp(e$, 64&)
     IF Error_Happened THEN EXIT SUB
     PrintToBuffer 12, "tab_fileno=tmp_fileno=" + e$ + ";", 0
@@ -21988,7 +22439,7 @@ SUB xfileprint (a$, ca$, n)
         IF getelement(a$, i) = "USING" THEN
             'get format string
             fpujump:
-            l$ = l$ + sp + "USING"
+            l$ = l$ + sp + SCase$("Using")
             e$ = "": b = 0: puformat$ = ""
             FOR i = i + 1 TO n
                 a2$ = getelement(ca$, i)
@@ -22179,7 +22630,7 @@ SUB xfileprint (a$, ca$, n)
 END SUB
 
 SUB xfilewrite (ca$, n)
-    l$ = "WRITE" + sp + "#"
+    l$ = SCase$("Write") + sp + "#"
     u$ = str2$(uniquenumber)
     PrintToBuffer 12, "tab_spc_cr_size=2;", 0
     IF n = 2 THEN Give_Error "Expected # ...": EXIT SUB
@@ -22295,7 +22746,7 @@ SUB xgosub (ca$)
         Labels(r).Error_Line = linenumber
     END IF 'x
 
-    l$ = "GOSUB" + sp + tlayout$
+    l$ = SCase$("GoSub") + sp + tlayout$
     layoutdone = 1: IF LEN(layout$) THEN layout$ = layout$ + sp + l$ ELSE layout$ = l$
     'note: This code fragment also used by ON ... GOTO/GOSUB
     'assume label is reachable (revise)
@@ -22312,7 +22763,7 @@ END SUB
 
 SUB xongotogosub (a$, ca$, n)
     IF n < 4 THEN Give_Error "Expected ON expression GOTO/GOSUB label,label,...": EXIT SUB
-    l$ = "ON"
+    l$ = SCase$("On")
     b = 0
     FOR i = 2 TO n
         e2$ = getelement$(a$, i)
@@ -22408,8 +22859,8 @@ END SUB
 SUB xprint (a$, ca$, n)
     u$ = str2$(uniquenumber)
 
-    l$ = "PRINT"
-    IF ASC(a$) = 76 THEN lp = 1: lp$ = "l": l$ = "LPRINT": PrintToBuffer 12, "tab_LPRINT=1;", 0: DEPENDENCY(DEPENDENCY_PRINTER) = 1 '"L"
+    l$ = SCase$("Print")
+    IF ASC(a$) = 76 THEN lp = 1: lp$ = "l": l$ = SCase$("LPrint"): PrintToBuffer 12, "tab_LPRINT=1;", 0: DEPENDENCY(DEPENDENCY_PRINTER) = 1 '"L"
 
     'PRINT USING?
     IF n >= 2 THEN
@@ -22417,7 +22868,7 @@ SUB xprint (a$, ca$, n)
             'get format string
             i = 3
             pujump:
-            l$ = l$ + sp + "USING"
+            l$ = l$ + sp + SCase$("Using")
             e$ = "": b = 0: puformat$ = ""
             FOR i = i TO n
                 a2$ = getelement(ca$, i)
@@ -22623,7 +23074,7 @@ END SUB
 
 
 SUB xread (ca$, n)
-    l$ = "READ"
+    l$ = SCase$("Read")
     IF n = 1 THEN Give_Error "Expected variable": EXIT SUB
     i = 2
     IF i > n THEN Give_Error "Expected , ...": EXIT SUB
@@ -22680,7 +23131,7 @@ SUB xread (ca$, n)
 END SUB
 
 SUB xwrite (ca$, n)
-    l$ = "WRITE"
+    l$ = SCase$("Write")
     u$ = str2$(uniquenumber)
     IF n = 1 THEN
         PrintToBuffer 12, "qbs_print(nothingstring,1);", 0
@@ -23453,12 +23904,12 @@ FUNCTION Evaluate_Expression$ (e$)
                 END IF
             LOOP
             s = Eval_E - c + 1
-            IF s < 1 THEN Evaluate_Expression$ = "ERROR -- BAD () Count": EXIT SUB
+            IF s < 1 THEN Evaluate_Expression$ = "ERROR -- BAD () Count": EXIT FUNCTION
             eval$ = " " + MID$(exp$, s, Eval_E - s) + " " 'pad with a space before and after so the parser can pick up the values properly.
 
             ParseExpression eval$
             eval$ = LTRIM$(RTRIM$(eval$))
-            IF LEFT$(eval$, 5) = "ERROR" THEN Evaluate_Expression$ = eval$: EXIT SUB
+            IF LEFT$(eval$, 5) = "ERROR" THEN Evaluate_Expression$ = eval$: EXIT FUNCTION
             exp$ = DWD(LEFT$(exp$, s - 2) + eval$ + MID$(exp$, Eval_E + 1))
             IF MID$(exp$, 1, 1) = "N" THEN MID$(exp$, 1) = "-"
         END IF
@@ -23468,7 +23919,7 @@ FUNCTION Evaluate_Expression$ (e$)
         c = c + 1
         SELECT CASE MID$(exp$, c, 1)
             CASE "0" TO "9", ".", "-" 'At this point, we should only have number values left.
-            CASE ELSE: Evaluate_Expression$ = "ERROR - Unknown Diagnosis: (" + exp$ + ") ": EXIT SUB
+            CASE ELSE: Evaluate_Expression$ = "ERROR - Unknown Diagnosis: (" + exp$ + ") ": EXIT FUNCTION
         END SELECT
     LOOP UNTIL c >= LEN(exp$)
 
@@ -24051,6 +24502,41 @@ SUB PreParse (e$)
         END IF
     LOOP UNTIL l = 0
 
+    'replace existing CONST values
+    sep$ = "()+-*/\><=^"
+    FOR i2 = 0 TO constlast
+        thisConstName$ = constname(i2)
+        FOR replaceConstPass = 1 TO 2
+            found = 0
+            DO
+                found = INSTR(found + 1, UCASE$(t$), thisConstName$)
+                IF found THEN
+                    IF found > 1 THEN
+                        IF INSTR(sep$, MID$(t$, found - 1, 1)) = 0 THEN _CONTINUE
+                    END IF
+                    IF found + LEN(thisConstName$) <= LEN(t$) THEN
+                        IF INSTR(sep$, MID$(t$, found + LEN(thisConstName$), 1)) = 0 THEN _CONTINUE
+                    END IF
+                    t = consttype(i2)
+                    IF t AND ISSTRING THEN
+                        r$ = conststring(i2)
+                        i4 = _INSTRREV(r$, ",")
+                        r$ = LEFT$(r$, i4 - 1)
+                    ELSE
+                        IF t AND ISFLOAT THEN
+                            r$ = STR$(constfloat(i2))
+                            r$ = N2S(r$)
+                        ELSE
+                            IF t AND ISUNSIGNED THEN r$ = STR$(constuinteger(i2)) ELSE r$ = STR$(constinteger(i2))
+                        END IF
+                    END IF
+                    t$ = LEFT$(t$, found - 1) + _TRIM$(r$) + MID$(t$, found + LEN(thisConstName$))
+                END IF
+            LOOP UNTIL found = 0
+            thisConstName$ = constname(i2) + constnamesymbol(i2)
+        NEXT
+    NEXT
+
     uboundPP_TypeMod = TotalPrefixedPP_TypeMod
     IF qb64prefix_set = 1 THEN uboundPP_TypeMod = TotalPP_TypeMod
     FOR j = 1 TO uboundPP_TypeMod
@@ -24078,8 +24564,6 @@ SUB PreParse (e$)
             l = l + 2 + LEN(PP_TypeMod(j)) 'move forward from the length of the symbol we checked + the new "(" and  ")"
         LOOP
     NEXT
-
-
 
     'Check for bad operators before a ( bracket
     l = 0
@@ -24127,37 +24611,6 @@ SUB PreParse (e$)
             l = l + 1
         END IF
     LOOP UNTIL l = 0 OR l = LEN(t$) 'last symbol is a bracket
-
-    'replace existing CONST values
-    sep$ = "()+-*/\><=^"
-    FOR i2 = 0 TO constlast
-        found = 0
-        DO
-            found = INSTR(found + 1, UCASE$(t$), constname(i2))
-            IF found THEN
-                IF found > 1 THEN
-                    IF INSTR(sep$, MID$(t$, found - 1, 1)) = 0 THEN _CONTINUE
-                END IF
-                IF found + LEN(constname(i2)) <= LEN(t$) THEN
-                    IF INSTR(sep$, MID$(t$, found + LEN(constname(i2)), 1)) = 0 THEN _CONTINUE
-                END IF
-                t = consttype(i2)
-                IF t AND ISSTRING THEN
-                    r$ = conststring(i2)
-                    i4 = _INSTRREV(r$, ",")
-                    r$ = LEFT$(r$, i4 - 1)
-                ELSE
-                    IF t AND ISFLOAT THEN
-                        r$ = STR$(constfloat(i2))
-                        r$ = N2S(r$)
-                    ELSE
-                        IF t AND ISUNSIGNED THEN r$ = STR$(constuinteger(i2)) ELSE r$ = STR$(constinteger(i2))
-                    END IF
-                END IF
-                t$ = LEFT$(t$, found - 1) + _TRIM$(r$) + MID$(t$, found + LEN(constname(i2)))
-            END IF
-        LOOP UNTIL found = 0
-    NEXT
 
     'Turn all &H (hex) numbers into decimal values for the program to process properly
     l = 0
@@ -24257,7 +24710,7 @@ FUNCTION N2S$ (exp$) 'scientific Notation to String
     dp = INSTR(t$, "D+"): dm = INSTR(t$, "D-")
     ep = INSTR(t$, "E+"): em = INSTR(t$, "E-")
     check1 = SGN(dp) + SGN(dm) + SGN(ep) + SGN(em)
-    IF check1 < 1 OR check1 > 1 THEN N2S = exp$: EXIT SUB 'If no scientic notation is found, or if we find more than 1 type, it's not SN!
+    IF check1 < 1 OR check1 > 1 THEN N2S = exp$: EXIT FUNCTION 'If no scientic notation is found, or if we find more than 1 type, it's not SN!
 
     SELECT CASE l 'l now tells us where the SN starts at.
         CASE IS < dp: l = dp
@@ -24294,7 +24747,7 @@ FUNCTION N2S$ (exp$) 'scientific Notation to String
     END SELECT
 
     N2S$ = sign$ + l$
-END SUB
+END FUNCTION
 
 
 FUNCTION QuotedFilename$ (f$)
@@ -24872,7 +25325,7 @@ FUNCTION EvalPreIF (text$, err$)
                 SELECT CASE a$
                     CASE " " 'ignore spaces
                     CASE "=", "<", ">"
-                        IF a$ = firstsymbol$ THEN err$ = "Duplicate operator (" + a$ + ")": EXIT SUB
+                        IF a$ = firstsymbol$ THEN err$ = "Duplicate operator (" + a$ + ")": EXIT FUNCTION
                         second = i: secondsymbol$ = a$
                     CASE ELSE 'we found a symbol we don't recognize
                         EXIT FOR
@@ -25019,7 +25472,7 @@ FUNCTION EvalPreIF (text$, err$)
         NEXT
     END IF
 
-END SUB
+END FUNCTION
 
 FUNCTION VerifyNumber (text$)
     t$ = LTRIM$(RTRIM$(text$))
@@ -25061,7 +25514,7 @@ SUB free_udt_varstrings (n$, udt, file, base_offset)
         element = udtenext(element)
     LOOP
 END SUB
-    
+
 SUB initialise_array_udt_varstrings (n$, udt, base_offset, bytesperelement$, acc$)
     IF NOT udtxvariable(udt) THEN EXIT SUB
     offset = base_offset
@@ -25115,7 +25568,7 @@ SUB copy_full_udt (dst$, src$, file, base_offset, udt)
         element = udtenext(element)
     LOOP
 END SUB
-        
+
 SUB dump_udts
     f = FREEFILE
     OPEN "types.txt" FOR OUTPUT AS #f
@@ -25296,6 +25749,38 @@ SUB ResetBuffers
         diskBufferControl(i).state = 0
     NEXT
 END SUB
+FUNCTION SCase$ (t$)
+    IF ideautolayoutkwcapitals THEN SCase$ = UCASE$(t$) ELSE SCase$ = t$
+END FUNCTION
+
+FUNCTION SCase2$ (t$)
+    separator$ = sp
+    IF ideautolayoutkwcapitals THEN
+        SCase2$ = UCASE$(t$)
+    ELSE
+        newWord = -1
+        temp$ = ""
+        FOR i = 1 TO LEN(t$)
+            s$ = MID$(t$, i, 1)
+            IF newWord THEN
+                IF s$ = "_" OR s$ = separator$ THEN
+                    temp$ = temp$ + s$
+                ELSE
+                    temp$ = temp$ + UCASE$(s$)
+                    newWord = 0
+                END IF
+            ELSE
+                IF s$ = separator$ THEN
+                    temp$ = temp$ + separator$
+                    newWord = -1
+                ELSE
+                    temp$ = temp$ + LCASE$(s$)
+                END IF
+            END IF
+        NEXT
+        SCase2$ = temp$
+    END IF
+END FUNCTION
 
 '$INCLUDE:'utilities\strings.bas'
 

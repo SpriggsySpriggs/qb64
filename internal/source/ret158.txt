@@ -4,14 +4,14 @@ switch(return_point[next_return_point]){
 case 0:
 error(3);
 break;
-case 74:
-goto RETURN_74;
+case 65:
+goto RETURN_65;
 break;
-case 75:
-goto RETURN_75;
+case 66:
+goto RETURN_66;
 break;
-case 76:
-goto RETURN_76;
+case 67:
+goto RETURN_67;
 break;
 }
 }
